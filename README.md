@@ -346,9 +346,9 @@ MIT License
 
 ## 联系方式
 
-- 项目地址：[https://github.com/yourusername/material-purchase-platform](https://github.com/yourusername/material-purchase-platform)
-- 作者：Your Name
-- 邮箱：your.email@example.com
+- 项目地址：[https://github.com/zhenglinleo-netizen/wms-project](https://github.com/zhenglinleo-netizen/wms-project)
+- 作者：Leo
+- 邮箱：1161607439@qq.com
 
 ## 更新日志
 
