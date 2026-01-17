@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.ProductMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.wms.entity.Product">
+        <id column="id" property="id"/>
+        <result column="product_code" property="productCode"/>
+        <result column="product_name" property="productName"/>
+        <result column="category" property="category"/>
+        <result column="type" property="type"/>
+        <result column="style" property="style"/>
+        <result column="specification" property="specification"/>
+        <result column="unit" property="unit"/>
+        <result column="price" property="price"/>
+        <result column="expected_delivery_days" property="expectedDeliveryDays"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT 
+          m.id,
+          m.material_code AS product_code,
+          m.material_name AS product_name,
+          mc.category_name AS category,
+          m.type,
+          m.style,
+          m.specification,
+          m.unit,
+          m.price,
+          m.expected_delivery_days,
+          m.description,
+          m.status,
+          m.create_time,
+          m.update_time
+        FROM material m
+        LEFT JOIN material_category mc ON m.category_id = mc.id
+        WHERE m.id = #{id}
+    </select>
+
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT 
+          m.id,
+          m.material_code AS product_code,
+          m.material_name AS product_name,
+          mc.category_name AS category,
+          m.type,
+          m.style,
+          m.specification,
+          m.unit,
+          m.price,
+          m.expected_delivery_days,
+          m.description,
+          m.status,
+          m.create_time,
+          m.update_time
+        FROM material m
+        LEFT JOIN material_category mc ON m.category_id = mc.id
+        WHERE m.material_code = #{productCode}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT 
+          m.id,
+          m.material_code AS product_code,
+          m.material_name AS product_name,
+          mc.category_name AS category,
+          m.type,
+          m.style,
+          m.specification,
+          m.unit,
+          m.price,
+          m.expected_delivery_days,
+          m.description,
+          m.status,
+          m.create_time,
+          m.update_time
+        FROM material m
+        LEFT JOIN material_category mc ON m.category_id = mc.id
+        ORDER BY m.create_time DESC
+    </select>
+
+    <select id="selectByCondition" resultMap="BaseResultMap">
+        SELECT 
+          m.id,
+          m.material_code AS product_code,
+          m.material_name AS product_name,
+          mc.category_name AS category,
+          m.type,
+          m.style,
+          m.specification,
+          m.unit,
+          m.price,
+          m.expected_delivery_days,
+          m.description,
+          m.status,
+          m.create_time,
+          m.update_time
+        FROM material m
+        LEFT JOIN material_category mc ON m.category_id = mc.id
+        <where>
+            <if test="productCode != null and productCode != ''">
+                AND m.material_code LIKE CONCAT('%', #{productCode}, '%')
+            </if>
+            <if test="productName != null and productName != ''">
+                AND m.material_name LIKE CONCAT('%', #{productName}, '%')
+            </if>
+            <if test="category != null and category != ''">
+                AND mc.category_name = #{category}
+            </if>
+            <if test="status != null">
+                AND m.status = #{status}
+            </if>
+        </where>
+        ORDER BY m.create_time DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO material (material_code, material_name, category_id, type, style, specification, unit, price, description, status)
+        VALUES (
+          #{productCode},
+          #{productName},
+          COALESCE(#{categoryId}, (SELECT id FROM material_category WHERE category_name = #{category} LIMIT 1)),
+          #{type},
+          #{style},
+          #{specification},
+          #{unit},
+          #{price},
+          #{description},
+          #{status}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE material
+        <set>
+            <if test="productName != null">material_name = #{productName},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="category != null and (categoryId == null)">
+              category_id = (SELECT id FROM material_category WHERE category_name = #{category} LIMIT 1),
+            </if>
+            <if test="type != null">type = #{type},</if>
+            <if test="style != null">style = #{style},</if>
+            <if test="specification != null">specification = #{specification},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="expectedDeliveryDays != null">expected_delivery_days = #{expectedDeliveryDays},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM material WHERE id = #{id}
+    </delete>
+
+</mapper>
+
+
+
+

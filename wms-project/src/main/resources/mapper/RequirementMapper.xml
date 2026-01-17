@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.RequirementMapper">
+
+    <resultMap id="RequirementResult" type="com.example.wms.entity.Requirement">
+        <id property="id" column="id" />
+        <result property="requirementCode" column="requirement_code" />
+        <result property="projectId" column="project_id" />
+        <result property="schemeId" column="scheme_id" />
+        <result property="creatorId" column="creator_id" />
+        <result property="creatorName" column="creator_name" />
+        <result property="creatorRole" column="creator_role" />
+        <result property="auditorId" column="auditor_id" />
+        <result property="auditorName" column="auditor_name" />
+        <result property="purpose" column="purpose" />
+        <result property="deliveryDate" column="delivery_date" />
+        <result property="expectedDeliveryDate" column="expected_delivery_date" />
+        <result property="expectedDeliveryDays" column="expected_delivery_days" />
+        <result property="deadline" column="deadline" />
+        <result property="priority" column="priority" />
+        <result property="status" column="status" />
+        <result property="totalPayment" column="total_payment" />
+        <result property="confirmedTime" column="confirmed_time" />
+        <result property="confirmedBy" column="confirmed_by" />
+        <result property="createTime" column="create_time" />
+        <result property="auditTime" column="audit_time" />
+        <result property="auditRemark" column="audit_remark" />
+        <result property="remark" column="remark" />
+        <result property="totalAmount" column="total_amount" />
+        <result property="projectName" column="project_name" />
+        <result property="schemeName" column="scheme_name" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.wms.entity.Requirement" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO requirement (
+            requirement_code, project_id, scheme_id, creator_id, purpose, 
+            <if test="priority != null">priority,</if>
+            status, 
+            remark
+        ) VALUES (
+            #{requirementCode}, #{projectId}, #{schemeId}, #{creatorId}, #{purpose}, 
+            <if test="priority != null">#{priority},</if>
+            #{status}, 
+            #{remark}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.example.wms.entity.Requirement">
+        UPDATE requirement
+        <set>
+            <if test="requirementCode != null">requirement_code = #{requirementCode},</if>
+            <if test="projectId != null">project_id = #{projectId},</if>
+            <if test="schemeId != null">scheme_id = #{schemeId},</if>
+            <if test="creatorId != null">creator_id = #{creatorId},</if>
+            <if test="auditorId != null">auditor_id = #{auditorId},</if>
+            <if test="purpose != null">purpose = #{purpose},</if>
+            <if test="priority != null">priority = #{priority},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="expectedDeliveryDate != null">expected_delivery_date = #{expectedDeliveryDate},</if>
+            <if test="expectedDeliveryDays != null">expected_delivery_days = #{expectedDeliveryDays},</if>
+            <if test="deadline != null">deadline = #{deadline},</if>
+            <if test="totalPayment != null">total_payment = #{totalPayment},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="RequirementResult">
+        SELECT r.*, p.project_name, s.scheme_name, 
+               u.real_name as creator_name, u.role as creator_role,
+               au.real_name as auditor_name
+        FROM requirement r
+        LEFT JOIN project p ON r.project_id = p.id
+        LEFT JOIN scheme s ON r.scheme_id = s.id
+        LEFT JOIN sys_user u ON r.creator_id = u.id
+        LEFT JOIN sys_user au ON r.auditor_id = au.id
+        WHERE r.id = #{id}
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM requirement WHERE id = #{id}
+    </delete>
+
+    <select id="selectRequirementList" resultMap="RequirementResult">
+        SELECT r.*, p.project_name, s.scheme_name, 
+               u.real_name as creator_name, u.role as creator_role,
+               au.real_name as auditor_name
+        FROM requirement r
+        LEFT JOIN project p ON r.project_id = p.id
+        LEFT JOIN scheme s ON r.scheme_id = s.id
+        LEFT JOIN sys_user u ON r.creator_id = u.id
+        LEFT JOIN sys_user au ON r.auditor_id = au.id
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (r.requirement_code LIKE CONCAT('%', #{keyword}, '%') 
+                 OR p.project_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.scheme_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND r.status = #{status}
+        </if>
+        <if test="priority != null and priority != ''">
+            AND r.priority = #{priority}
+        </if>
+        <if test="creatorId != null">
+            AND r.creator_id = #{creatorId}
+        </if>
+        ORDER BY r.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectRequirementCount" resultType="int">
+        SELECT COUNT(1)
+        FROM requirement r
+        LEFT JOIN project p ON r.project_id = p.id
+        LEFT JOIN scheme s ON r.scheme_id = s.id
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (r.requirement_code LIKE CONCAT('%', #{keyword}, '%') 
+                 OR p.project_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR s.scheme_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND r.status = #{status}
+        </if>
+        <if test="priority != null and priority != ''">
+            AND r.priority = #{priority}
+        </if>
+        <if test="creatorId != null">
+            AND r.creator_id = #{creatorId}
+        </if>
+    </select>
+    
+    <select id="checkRequirementNameExists" resultType="int">
+        SELECT COUNT(1)
+        FROM requirement
+        WHERE project_id = #{projectId}
+        AND purpose = #{purpose}
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+</mapper>

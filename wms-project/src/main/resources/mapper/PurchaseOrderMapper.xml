@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.PurchaseOrderMapper">
+    
+    <resultMap id="BaseResultMap" type="com.example.wms.entity.PurchaseOrder">
+        <id column="id" property="id"/>
+        <result column="order_code" property="orderCode"/>
+        <result column="requirement_id" property="requirementId"/>
+        <result column="supplier_id" property="supplierId"/>
+        <result column="total_amount" property="totalAmount"/>
+        <result column="order_date" property="orderDate"/>
+        <result column="delivery_date" property="deliveryDate"/>
+        <result column="status" property="status"/>
+        <result column="creator_id" property="creatorId"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="creator_name" property="creatorName"/>
+        <result column="supplier_name" property="supplierName"/>
+        <result column="requirement_code" property="requirementCode"/>
+    </resultMap>
+    
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT po.*, u.real_name as creator_name, s.supplier_name, r.requirement_code
+        FROM purchase_order po
+        LEFT JOIN sys_user u ON po.creator_id = u.id
+        LEFT JOIN supplier s ON po.supplier_id = s.id
+        LEFT JOIN requirement r ON po.requirement_id = r.id
+        WHERE po.id = #{id}
+    </select>
+    
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT po.*, u.real_name as creator_name, s.supplier_name, r.requirement_code
+        FROM purchase_order po
+        LEFT JOIN sys_user u ON po.creator_id = u.id
+        LEFT JOIN supplier s ON po.supplier_id = s.id
+        LEFT JOIN requirement r ON po.requirement_id = r.id
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (po.order_code LIKE CONCAT('%', #{keyword}, '%') 
+                 OR r.requirement_code LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND po.status = #{status}
+        </if>
+        <if test="creatorId != null">
+            AND po.creator_id = #{creatorId}
+        </if>
+        ORDER BY po.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+    
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(1)
+        FROM purchase_order po
+        LEFT JOIN requirement r ON po.requirement_id = r.id
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND (po.order_code LIKE CONCAT('%', #{keyword}, '%') 
+                 OR r.requirement_code LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND po.status = #{status}
+        </if>
+        <if test="creatorId != null">
+            AND po.creator_id = #{creatorId}
+        </if>
+    </select>
+    
+    <select id="selectByRequirementId" resultMap="BaseResultMap">
+        SELECT po.*, u.real_name as creator_name, s.supplier_name, r.requirement_code
+        FROM purchase_order po
+        LEFT JOIN sys_user u ON po.creator_id = u.id
+        LEFT JOIN supplier s ON po.supplier_id = s.id
+        LEFT JOIN requirement r ON po.requirement_id = r.id
+        WHERE po.requirement_id = #{requirementId}
+    </select>
+    
+    <insert id="insert" parameterType="com.example.wms.entity.PurchaseOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO purchase_order (order_code, requirement_id, supplier_id, total_amount, order_date, delivery_date, status, creator_id, remark, create_time)
+        VALUES (#{orderCode}, #{requirementId}, #{supplierId}, #{totalAmount}, #{orderDate}, #{deliveryDate}, #{status}, #{creatorId}, #{remark}, #{createTime})
+    </insert>
+    
+    <update id="updateById" parameterType="com.example.wms.entity.PurchaseOrder">
+        UPDATE purchase_order
+        <set>
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="requirementId != null">requirement_id = #{requirementId},</if>
+            <if test="supplierId != null">supplier_id = #{supplierId},</if>
+            <if test="totalAmount != null">total_amount = #{totalAmount},</if>
+            <if test="orderDate != null">order_date = #{orderDate},</if>
+            <if test="deliveryDate != null">delivery_date = #{deliveryDate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+    
+    <update id="updateStatus">
+        UPDATE purchase_order SET status = #{status} WHERE id = #{id}
+    </update>
+    
+    <delete id="deleteById">
+        DELETE FROM purchase_order WHERE id = #{id}
+    </delete>
+    
+</mapper>

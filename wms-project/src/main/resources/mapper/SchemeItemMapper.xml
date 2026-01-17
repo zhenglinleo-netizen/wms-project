@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.SchemeItemMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.wms.entity.SchemeItem">
+        <id column="id" property="id"/>
+        <result column="scheme_id" property="schemeId"/>
+        <result column="material_id" property="materialId"/>
+        <result column="quantity" property="quantity"/>
+        <result column="unit" property="unit"/>
+        <result column="purpose" property="purpose"/>
+        <result column="remark" property="remark"/>
+        <result column="sort_order" property="sortOrder"/>
+    </resultMap>
+
+    <resultMap id="SchemeItemWithProductResultMap" type="com.example.wms.entity.SchemeItem" extends="BaseResultMap">
+        <result column="material_name" property="productName"/>
+        <result column="material_code" property="productCode"/>
+        <result column="category_id" property="category"/>
+        <result column="specification" property="specification"/>
+        <result column="price" property="price"/>
+        <result column="image_url" property="image"/>
+    </resultMap>
+
+    <select id="getSchemeItemListBySchemeId" resultMap="SchemeItemWithProductResultMap">
+        SELECT 
+          si.id,
+          si.scheme_id,
+          si.material_id,
+          si.quantity,
+          si.unit,
+          si.purpose,
+          si.remark,
+          si.sort_order,
+          m.material_name,
+          m.material_code,
+          m.category_id,
+          m.specification,
+          m.price,
+          m.image_url
+        FROM scheme_item si
+        LEFT JOIN material m ON si.material_id = m.id
+        WHERE si.scheme_id = #{schemeId}
+        ORDER BY si.sort_order ASC, si.id ASC
+    </select>
+
+    <select id="getSchemeItemById" resultMap="BaseResultMap">
+        SELECT 
+          id,
+          scheme_id,
+          material_id,
+          quantity,
+          unit,
+          purpose,
+          remark,
+          sort_order
+        FROM scheme_item
+        WHERE id = #{id}
+    </select>
+    
+    <select id="getSchemeItemBySchemeIdAndMaterialId" resultMap="SchemeItemWithProductResultMap">
+        SELECT 
+          si.id,
+          si.scheme_id,
+          si.material_id,
+          si.quantity,
+          si.unit,
+          si.purpose,
+          si.remark,
+          si.sort_order,
+          m.material_name,
+          m.material_code,
+          m.category_id,
+          m.specification,
+          m.price,
+          m.image_url
+        FROM scheme_item si
+        LEFT JOIN material m ON si.material_id = m.id
+        WHERE si.scheme_id = #{schemeId} AND si.material_id = #{materialId}
+    </select>
+
+    <insert id="addSchemeItem" parameterType="com.example.wms.entity.SchemeItem">
+        INSERT INTO scheme_item (
+          scheme_id,
+          material_id,
+          quantity,
+          unit,
+          purpose,
+          remark,
+          sort_order
+        ) VALUES (
+          #{schemeId},
+          #{materialId},
+          #{quantity},
+          #{unit},
+          #{purpose},
+          #{remark},
+          #{sortOrder}
+        )
+    </insert>
+
+    <update id="updateSchemeItem" parameterType="com.example.wms.entity.SchemeItem">
+        UPDATE scheme_item
+        SET 
+          material_id = #{materialId},
+          quantity = #{quantity},
+          unit = #{unit},
+          purpose = #{purpose},
+          remark = #{remark},
+          sort_order = #{sortOrder}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteSchemeItem">
+        DELETE FROM scheme_item WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteSchemeItemsBySchemeId">
+        DELETE FROM scheme_item WHERE scheme_id = #{schemeId}
+    </delete>
+</mapper>

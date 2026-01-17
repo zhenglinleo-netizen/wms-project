@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: wms-project
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/wms_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&autoReconnect=true
+    username: root
+    password: 123456
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+server:
+  port: 8081
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.wms.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+sql:
+  init:
+    mode: always
+    schema-locations: classpath:db/schema_purchase_platform.sql
+
+logging:
+  level:
+    com.example.wms.mapper: debug
+    root: info
+
+# JWT配置
+jwt:
+  secret: purchase-platform-secret-key-should-be-at-least-256-bits-long-for-security-purposes
+  expiration: 86400000 # 24小时（毫秒）

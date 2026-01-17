@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.NegotiationAuditMapper">
+    <!-- 插入议价审核记录 -->
+    <insert id="insert" parameterType="com.example.wms.entity.NegotiationAudit" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO negotiation_audit (
+            requirement_id, 
+            negotiation_data, 
+            negotiated_total, 
+            submitted_by, 
+            submitted_at, 
+            audited_by, 
+            audited_at, 
+            status, 
+            rejection_reason
+        ) VALUES (
+            #{requirementId}, 
+            #{negotiationData}, 
+            #{negotiatedTotal}, 
+            #{submittedBy}, 
+            #{submittedAt}, 
+            #{auditedBy}, 
+            #{auditedAt}, 
+            #{status}, 
+            #{rejectionReason}
+        )
+    </insert>
+
+    <!-- 更新议价审核记录 -->
+    <update id="updateById" parameterType="com.example.wms.entity.NegotiationAudit">
+        UPDATE negotiation_audit
+        SET 
+            status = #{status}, 
+            audited_by = #{auditedBy}, 
+            audited_at = #{auditedAt}, 
+            rejection_reason = #{rejectionReason}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询议价审核记录 -->
+    <select id="selectById" parameterType="java.lang.Long" resultType="com.example.wms.entity.NegotiationAudit">
+        SELECT 
+            id, 
+            requirement_id as requirementId, 
+            negotiation_data as negotiationData, 
+            negotiated_total as negotiatedTotal, 
+            submitted_by as submittedBy, 
+            submitted_at as submittedAt, 
+            audited_by as auditedBy, 
+            audited_at as auditedAt, 
+            status, 
+            rejection_reason as rejectionReason
+        FROM negotiation_audit
+        WHERE id = #{id}
+    </select>
+    
+    <!-- 根据需求ID查询议价审核记录 -->
+    <select id="selectByRequirementId" parameterType="java.lang.Long" resultType="com.example.wms.entity.NegotiationAudit">
+        SELECT 
+            id, 
+            requirement_id as requirementId, 
+            negotiation_data as negotiationData, 
+            negotiated_total as negotiatedTotal, 
+            submitted_by as submittedBy, 
+            submitted_at as submittedAt, 
+            audited_by as auditedBy, 
+            audited_at as auditedAt, 
+            status, 
+            rejection_reason as rejectionReason
+        FROM negotiation_audit
+        WHERE requirement_id = #{requirementId}
+        ORDER BY submitted_at DESC
+        LIMIT 1
+    </select>
+</mapper>

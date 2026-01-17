@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.InventoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.wms.entity.Inventory">
+        <id column="id" property="id"/>
+        <result column="warehouse_id" property="warehouseId"/>
+        <result column="material_id" property="productId"/>
+        <result column="quantity" property="quantity"/>
+        <result column="avg_price" property="avgPrice"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="warehouse_name" property="warehouseName"/>
+        <result column="product_name" property="productName"/>
+        <result column="product_code" property="productCode"/>
+        <result column="image_url" property="imageUrl"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT i.*, w.warehouse_name, m.material_name AS product_name, m.material_code AS product_code, m.image_url
+        FROM inventory i
+        LEFT JOIN warehouse w ON i.warehouse_id = w.id
+        LEFT JOIN material m ON i.material_id = m.id
+        WHERE i.id = #{id}
+    </select>
+
+    <select id="selectByWarehouseAndProduct" resultMap="BaseResultMap">
+        SELECT i.*, w.warehouse_name, m.material_name AS product_name, m.material_code AS product_code, m.image_url
+        FROM inventory i
+        LEFT JOIN warehouse w ON i.warehouse_id = w.id
+        LEFT JOIN material m ON i.material_id = m.id
+        WHERE i.warehouse_id = #{warehouseId} AND i.material_id = #{productId}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT i.*, w.warehouse_name, m.material_name AS product_name, m.material_code AS product_code, m.image_url
+        FROM inventory i
+        LEFT JOIN warehouse w ON i.warehouse_id = w.id
+        LEFT JOIN material m ON i.material_id = m.id
+        ORDER BY i.update_time DESC
+    </select>
+
+    <select id="selectByWarehouseId" resultMap="BaseResultMap">
+        SELECT i.*, w.warehouse_name, m.material_name AS product_name, m.material_code AS product_code, m.image_url
+        FROM inventory i
+        LEFT JOIN warehouse w ON i.warehouse_id = w.id
+        LEFT JOIN material m ON i.material_id = m.id
+        WHERE i.warehouse_id = #{warehouseId}
+        ORDER BY i.update_time DESC
+    </select>
+
+    <select id="selectByProductId" resultMap="BaseResultMap">
+        SELECT i.*, w.warehouse_name, m.material_name AS product_name, m.material_code AS product_code, m.image_url
+        FROM inventory i
+        LEFT JOIN warehouse w ON i.warehouse_id = w.id
+        LEFT JOIN material m ON i.material_id = m.id
+        WHERE i.material_id = #{productId}
+        ORDER BY i.update_time DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO inventory (warehouse_id, material_id, quantity, avg_price)
+        VALUES (#{warehouseId}, #{productId}, #{quantity}, #{avgPrice})
+    </insert>
+
+    <update id="update">
+        UPDATE inventory
+        <set>
+            <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="avgPrice != null">avg_price = #{avgPrice},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateQuantity">
+        UPDATE inventory
+        SET quantity = quantity + #{quantity}
+        WHERE warehouse_id = #{warehouseId} AND material_id = #{productId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM inventory WHERE id = #{id}
+    </delete>
+
+</mapper>
+
+
+
+

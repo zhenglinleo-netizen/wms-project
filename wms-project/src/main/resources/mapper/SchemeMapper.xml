@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.SchemeMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.wms.entity.Scheme">
+        <id column="id" property="id"/>
+        <result column="scheme_code" property="schemeCode"/>
+        <result column="scheme_name" property="schemeName"/>
+        <result column="project_id" property="projectId"/>
+        <result column="version" property="version"/>
+        <result column="description" property="description"/>
+        <result column="creator_id" property="creatorId"/>
+        <result column="creator_company" property="creatorCompany"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <select id="getSchemeListByProjectId" resultMap="BaseResultMap">
+        SELECT 
+          s.id,
+          s.scheme_code,
+          s.scheme_name,
+          s.project_id,
+          s.version,
+          s.description,
+          s.creator_id,
+          u.company AS creator_company,
+          s.status,
+          s.create_time,
+          s.update_time
+        FROM scheme s
+        LEFT JOIN sys_user u ON s.creator_id = u.id
+        WHERE project_id = #{projectId}
+        ORDER BY s.create_time DESC
+    </select>
+
+    <select id="getSchemeList" resultMap="BaseResultMap">
+        SELECT 
+          s.id,
+          s.scheme_code,
+          s.scheme_name,
+          s.project_id,
+          s.version,
+          s.description,
+          s.creator_id,
+          u.company AS creator_company,
+          s.status,
+          s.create_time,
+          s.update_time
+        FROM scheme s
+        LEFT JOIN sys_user u ON s.creator_id = u.id
+        <where>
+            <if test="params.projectId != null">
+                AND s.project_id = #{params.projectId}
+            </if>
+            <if test="params.status != null and params.status != ''">
+                AND s.status = #{params.status}
+            </if>
+            <if test="params.schemeName != null and params.schemeName != ''">
+                AND s.scheme_name LIKE CONCAT('%', #{params.schemeName}, '%')
+            </if>
+        </where>
+        ORDER BY s.create_time DESC
+    </select>
+
+    <select id="getSchemeById" resultMap="BaseResultMap">
+        SELECT 
+          s.id,
+          s.scheme_code,
+          s.scheme_name,
+          s.project_id,
+          s.version,
+          s.description,
+          s.creator_id,
+          u.company AS creator_company,
+          s.status,
+          s.create_time,
+          s.update_time
+        FROM scheme s
+        LEFT JOIN sys_user u ON s.creator_id = u.id
+        WHERE s.id = #{id}
+    </select>
+
+    <insert id="addScheme" parameterType="com.example.wms.entity.Scheme">
+        INSERT INTO scheme (
+          scheme_code,
+          scheme_name,
+          project_id,
+          version,
+          description,
+          creator_id,
+          status,
+          create_time,
+          update_time
+        ) VALUES (
+          #{schemeCode},
+          #{schemeName},
+          #{projectId},
+          #{version},
+          #{description},
+          #{creatorId},
+          #{status},
+          NOW(),
+          NOW()
+        )
+    </insert>
+
+    <update id="updateScheme" parameterType="com.example.wms.entity.Scheme">
+        UPDATE scheme
+        SET 
+          <if test="schemeCode != null">scheme_code = #{schemeCode},</if>
+          <if test="schemeName != null">scheme_name = #{schemeName},</if>
+          <if test="projectId != null">project_id = #{projectId},</if>
+          <if test="version != null">version = #{version},</if>
+          <if test="description != null">description = #{description},</if>
+          <if test="creatorId != null">creator_id = #{creatorId},</if>
+          <if test="status != null">status = #{status},</if>
+          update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteScheme">
+        DELETE FROM scheme WHERE id = #{id}
+    </delete>
+    
+    <delete id="deleteSchemesByProjectId">
+        DELETE FROM scheme WHERE project_id = #{projectId}
+    </delete>
+    
+    <select id="checkSchemeNameExists" resultType="int">
+        SELECT COUNT(*) FROM scheme
+        WHERE scheme_name = #{schemeName}
+        AND project_id = #{projectId}
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+</mapper>

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.ProjectMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.wms.entity.Project">
+        <id column="id" property="id"/>
+        <result column="project_code" property="projectCode"/>
+        <result column="project_name" property="projectName"/>
+        <result column="description" property="description"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="owner_id" property="ownerId"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 关联查询方案的resultMap -->
+    <resultMap id="ProjectWithSchemeResultMap" type="com.example.wms.entity.Project" extends="BaseResultMap">
+        <collection property="schemes" ofType="com.example.wms.entity.Scheme">
+            <id column="scheme_id" property="id"/>
+            <result column="scheme_code" property="schemeCode"/>
+            <result column="scheme_name" property="schemeName"/>
+            <result column="version" property="version"/>
+            <result column="scheme_description" property="description"/>
+            <result column="creator_id" property="creatorId"/>
+            <result column="scheme_status" property="status"/>
+            <result column="scheme_create_time" property="createTime"/>
+            <result column="scheme_update_time" property="updateTime"/>
+            <result column="materials_count" property="materialsCount"/>
+        </collection>
+    </resultMap>
+
+    <select id="getProjectList" resultMap="ProjectWithSchemeResultMap">
+        SELECT 
+          p.id,
+          p.project_code,
+          p.project_name,
+          p.description,
+          p.start_date,
+          p.end_date,
+          p.owner_id,
+          p.status,
+          p.create_time,
+          p.update_time,
+          s.id AS scheme_id,
+          s.scheme_code,
+          s.scheme_name,
+          s.version,
+          s.description AS scheme_description,
+          s.creator_id,
+          s.status AS scheme_status,
+          s.create_time AS scheme_create_time,
+          s.update_time AS scheme_update_time,
+          (SELECT COUNT(*) FROM scheme_item WHERE scheme_id = s.id) AS materials_count
+        FROM project p
+        LEFT JOIN scheme s ON p.id = s.project_id
+        WHERE 1=1
+        <if test="params.userId != null">
+            AND (p.owner_id = #{params.userId} OR p.id IN (SELECT project_id FROM project_member WHERE user_id = #{params.userId}))
+        </if>
+        <if test="params.keyword != null and params.keyword != ''">
+            AND (p.project_name LIKE CONCAT('%', #{params.keyword}, '%') OR p.description LIKE CONCAT('%', #{params.keyword}, '%'))
+        </if>
+        <if test="params.status != null and params.status != ''">
+            AND p.status = #{params.status}
+        </if>
+        ORDER BY p.create_time DESC
+    </select>
+
+    <select id="getProjectById" resultMap="ProjectWithSchemeResultMap">
+        SELECT 
+          p.id,
+          p.project_code,
+          p.project_name,
+          p.description,
+          p.start_date,
+          p.end_date,
+          p.owner_id,
+          p.status,
+          p.create_time,
+          p.update_time,
+          s.id AS scheme_id,
+          s.scheme_code,
+          s.scheme_name,
+          s.version,
+          s.description AS scheme_description,
+          s.creator_id,
+          s.status AS scheme_status,
+          s.create_time AS scheme_create_time,
+          s.update_time AS scheme_update_time
+        FROM project p
+        LEFT JOIN scheme s ON p.id = s.project_id
+        WHERE p.id = #{id}
+        AND (p.owner_id = #{userId} OR p.id IN (SELECT project_id FROM project_member WHERE user_id = #{userId}))
+    </select>
+
+    <insert id="addProject" parameterType="com.example.wms.entity.Project">
+        INSERT INTO project (
+          project_code,
+          project_name,
+          description,
+          start_date,
+          end_date,
+          owner_id,
+          status,
+          create_time,
+          update_time
+        ) VALUES (
+          #{projectCode},
+          #{projectName},
+          #{description},
+          #{startDate},
+          #{endDate},
+          #{ownerId},
+          #{status},
+          NOW(),
+          NOW()
+        )
+    </insert>
+
+    <update id="updateProject" parameterType="com.example.wms.entity.Project">
+        UPDATE project
+        <set>
+          <if test="projectCode != null">project_code = #{projectCode},</if>
+          <if test="projectName != null">project_name = #{projectName},</if>
+          <if test="description != null">description = #{description},</if>
+          <if test="startDate != null">start_date = #{startDate},</if>
+          <if test="endDate != null">end_date = #{endDate},</if>
+          <if test="ownerId != null">owner_id = #{ownerId},</if>
+          <if test="status != null">status = #{status},</if>
+          update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteProject">
+        DELETE FROM project WHERE id = #{id}
+    </delete>
+
+    <select id="checkProjectNameExists" resultType="int">
+        SELECT COUNT(*) FROM project
+        WHERE project_name = #{projectName}
+        AND owner_id = #{ownerId}
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+</mapper>

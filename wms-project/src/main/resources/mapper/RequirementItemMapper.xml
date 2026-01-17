@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.RequirementItemMapper">
+
+    <resultMap id="RequirementItemResult" type="com.example.wms.entity.RequirementItem">
+        <id property="id" column="id" />
+        <result property="requirementId" column="requirement_id" />
+        <result property="materialId" column="material_id" />
+        <result property="materialName" column="material_name" />
+        <result property="materialCode" column="material_code" />
+        <result property="specification" column="specification" />
+        <result property="price" column="price" />
+        <result property="negotiatedPrice" column="negotiated_price" />
+        <result property="quantity" column="quantity" />
+        <result property="unit" column="unit" />
+        <result property="purpose" column="purpose" />
+        <result property="remark" column="remark" />
+        <result property="expectedDeliveryDays" column="expected_delivery_days" />
+        <result property="imageUrl" column="image_url" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.wms.entity.RequirementItem">
+        INSERT INTO requirement_item (
+            requirement_id, material_id, quantity, unit, purpose, remark
+        ) VALUES (
+            #{requirementId}, #{materialId}, #{quantity}, #{unit}, #{purpose}, #{remark}
+        )
+    </insert>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO requirement_item (
+            requirement_id, material_id, quantity, unit, purpose, remark
+        ) VALUES
+        <foreach collection="items" item="item" separator=",">
+            (
+                #{item.requirementId}, #{item.materialId}, #{item.quantity}, #{item.unit}, #{item.purpose}, #{item.remark}
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectByRequirementId" resultMap="RequirementItemResult">
+        SELECT ri.*, m.material_name, m.material_code, m.specification, m.price, m.expected_delivery_days, m.image_url
+        FROM requirement_item ri
+        LEFT JOIN material m ON ri.material_id = m.id
+        WHERE ri.requirement_id = #{requirementId}
+    </select>
+    
+    <!-- 测试用：直接查询requirement_item表，不使用JOIN -->
+    <select id="selectRequirementItemsDirectly" resultMap="RequirementItemResult">
+        SELECT ri.*
+        FROM requirement_item ri
+        WHERE ri.requirement_id = #{requirementId}
+    </select>
+
+    <delete id="deleteByRequirementId">
+        DELETE FROM requirement_item WHERE requirement_id = #{requirementId}
+    </delete>
+    
+    <update id="updatePriceByRequirementIdAndMaterialId">
+        UPDATE requirement_item 
+        SET negotiated_price = #{negotiatedPrice} 
+        WHERE requirement_id = #{requirementId} AND material_id = #{materialId}
+    </update>
+</mapper>
