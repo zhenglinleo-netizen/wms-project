@@ -10,6 +10,7 @@ public interface ProductMapper {
     Product selectByCode(String productCode);
     List<Product> selectAll();
     List<Product> selectByCondition(Product product);
+    Product selectByFileHash(String fileHash);
     int insert(Product product);
     int update(Product product);
     int deleteById(Long id);

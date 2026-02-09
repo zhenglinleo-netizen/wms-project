@@ -109,11 +109,28 @@ const loadData = async () => {
       // 查找对应库存数据
       const inventory = inventoryMap.get(product.productCode)
       
+      // 处理图片URL
+      let imageUrl = product.image || product.imageUrl || product.image_url || ''
+      if (imageUrl && typeof imageUrl === 'string') {
+        // 过滤掉错误的图片URL（如"上传成功"）
+        if (imageUrl === '上传成功' || imageUrl === '[]' || !imageUrl.startsWith('http')) {
+          imageUrl = ''
+        } else {
+          // 提取文件名（忽略bucket名称）
+          const lastSlashIndex = imageUrl.lastIndexOf('/')
+          if (lastSlashIndex !== -1) {
+            const filename = imageUrl.substring(lastSlashIndex + 1)
+            // 使用后端接口获取图片，避免MinIO认证问题
+            imageUrl = `/api/file/get-image?filename=${filename}`
+          }
+        }
+      }
+      
       return {
         // 产品基本信息
         productCode: product.productCode,
         productName: product.productName,
-        imageUrl: product.imageUrl || product.image_url || '',
+        imageUrl: imageUrl,
         // 库存信息，默认值确保即使没有库存也能显示
         quantity: inventory?.quantity || inventory?.amount || inventory?.stock || inventory?.total || 0,
         avgPrice: inventory?.avgPrice || inventory?.price || 0,

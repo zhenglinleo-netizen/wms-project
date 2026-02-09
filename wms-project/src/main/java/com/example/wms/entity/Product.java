@@ -22,6 +22,9 @@ public class Product {
     private String description;
     private Integer expectedDeliveryDays;
     private Integer status;
+    private String fileHash;
+    private String imageUrl;
+    private String images;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

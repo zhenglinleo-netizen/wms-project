@@ -15,6 +15,14 @@
         <el-form-item label="辅料名称">
           <el-input v-model="searchForm.productName" placeholder="请输入辅料名称" clearable />
         </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="searchForm.status" placeholder="全部" clearable style="width: 120px;">
+            <el-option label="全部" value="" />
+            <el-option label="上架" value="1" />
+            <el-option label="待审核" value="2" />
+            <el-option label="下架" value="0" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -43,14 +51,16 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'">
-              {{ row.status === 1 ? '上架' : '下架' }}
+            <el-tag :type="getStatusType(row.status)">
+              {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.status !== 1" type="success" size="small" @click="handleStatusChange(row, 1)">上架</el-button>
+            <el-button v-if="row.status !== 0" type="warning" size="small" @click="handleStatusChange(row, 0)">下架</el-button>
             <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -103,12 +113,6 @@
         <el-form-item label="单价" prop="price">
           <el-input-number v-model="form.price" :precision="2" :min="0" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.status">
-            <el-radio :label="1">上架</el-radio>
-            <el-radio :label="0">下架</el-radio>
-          </el-radio-group>
-        </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" :rows="3" />
         </el-form-item>
@@ -135,7 +139,8 @@ const formRef = ref()
 
 const searchForm = reactive({
   productCode: '',
-  productName: ''
+  productName: '',
+  status: ''
 })
 
 const form = reactive({
@@ -173,8 +178,20 @@ const loadCategories = async () => {
 const loadData = async () => {
   try {
     let res
-    if (searchForm.productCode || searchForm.productName) {
-      res = await searchProducts(searchForm)
+    
+    // 构建搜索参数，包括状态
+    const searchParams = {
+      productCode: searchForm.productCode,
+      productName: searchForm.productName
+    }
+    
+    // 只有当status有值时才添加到搜索参数中
+    if (searchForm.status !== '') {
+      searchParams.status = searchForm.status
+    }
+    
+    if (searchForm.productCode || searchForm.productName || searchForm.status !== '') {
+      res = await searchProducts(searchParams)
     } else {
       res = await getProductList()
     }
@@ -207,6 +224,7 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.productCode = ''
   searchForm.productName = ''
+  searchForm.status = ''
   loadData()
 }
 
@@ -243,11 +261,66 @@ const handleDelete = async (row) => {
   }
 }
 
+// 获取状态文本
+const getStatusText = (status) => {
+  switch (status) {
+    case 1:
+      return '上架'
+    case 2:
+      return '待审核'
+    case 0:
+    default:
+      return '下架'
+  }
+}
+
+// 获取状态标签类型
+const getStatusType = (status) => {
+  switch (status) {
+    case 1:
+      return 'success'
+    case 2:
+      return 'info'
+    case 0:
+    default:
+      return 'danger'
+  }
+}
+
+// 处理状态变更
+const handleStatusChange = async (row, newStatus) => {
+  try {
+    // 当状态为待审核且用户点击上架操作时，检查单价是否大于0
+    if (row.status === 2 && newStatus === 1) {
+      if (!row.price || row.price <= 0) {
+        ElMessage.error('待审核的辅料上架前必须设置非零单价')
+        return
+      }
+    }
+    
+    const updatedProduct = {
+      ...row,
+      status: newStatus
+    }
+    await updateProduct(updatedProduct)
+    ElMessage.success(`已${getStatusText(newStatus)}`)
+    loadData()
+  } catch (error) {
+    console.error('状态变更失败:', error)
+    ElMessage.error('状态变更失败')
+  }
+}
+
 const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        // 当状态为待审核且设置了单价时，自动变更为上架状态
+        if (form.status === 2 && form.price > 0) {
+          form.status = 1
+        }
+        
         if (isEdit.value) {
           await updateProduct(form)
           ElMessage.success('更新成功')
@@ -276,7 +349,7 @@ const resetForm = () => {
   form.unit = '件'
   form.price = 0
   form.description = ''
-  form.status = 1
+  // 不再设置status字段，状态通过操作按钮控制
 }
 
 onMounted(() => {

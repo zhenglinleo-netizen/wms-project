@@ -33,12 +33,26 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public Product getProductByFileHash(String fileHash) {
+        return productMapper.selectByFileHash(fileHash);
+    }
+
+    @Override
     public int saveProduct(Product product) {
         if (productMapper.selectByCode(product.getProductCode()) != null) {
             throw new RuntimeException("商品编码已存在");
         }
+        
+        // 检查文件哈希值是否已存在
+        if (product.getFileHash() != null && !product.getFileHash().isEmpty()) {
+            Product existingProduct = productMapper.selectByFileHash(product.getFileHash());
+            if (existingProduct != null) {
+                throw new RuntimeException("该辅料图片已存在，无法重复添加");
+            }
+        }
+        
         if (product.getStatus() == null) {
-            product.setStatus(1);
+            product.setStatus(2);
         }
         if (product.getUnit() == null || product.getUnit().isEmpty()) {
             product.setUnit("件");
@@ -64,6 +78,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public int updateProduct(Product product) {
+        if (product.getStatus() != null && product.getStatus() == 2 && product.getPrice() != null && product.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            product.setStatus(1);
+        }
         return productMapper.update(product);
     }
 

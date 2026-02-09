@@ -1,9 +1,14 @@
 <template>
-  <el-container class="layout-container">
-    <el-aside width="240px" class="sidebar">
-      <div class="logo">
+  <el-container class="layout-container" @click="handleClickOutside">
+    <!-- 移动端菜单展开按钮 -->
+    <div class="mobile-menu-toggle" @click="toggleSidebar" @click.stop>
+      <el-icon><ArrowLeft :class="{ 'rotate-180': isSidebarCollapsed }"></ArrowLeft></el-icon>
+    </div>
+    
+    <el-aside width="240px" class="sidebar" :class="{ 'sidebar-collapsed': isSidebarCollapsed }" @click.stop>
+      <div class="logo" :class="{ 'logo-collapsed': isSidebarCollapsed }">
         <el-icon class="logo-icon"><GoodsFilled /></el-icon>
-        <h2>辅料采购平台</h2>
+        <h2 v-if="!isSidebarCollapsed">辅料采购平台</h2>
       </div>
       <el-menu
     :default-active="activeMenu"
@@ -15,83 +20,38 @@
     class="custom-menu"
     @select="handleMenuSelect"
     @open="handleMenuOpen"
+    @close="handleMenuClose"
   >
-        <el-menu-item index="/dashboard">
-          <el-icon class="menu-icon"><Odometer /></el-icon>
-          <span>仪表盘</span>
-        </el-menu-item>
-        
-        <el-menu-item index="/material-library">
-          <el-icon class="menu-icon"><Search /></el-icon>
-          <span>智能辅料库</span>
-        </el-menu-item>
-        
-        <el-menu-item index="/project-scheme">
-          <el-icon class="menu-icon"><Folder /></el-icon>
-          <span>项目方案管理</span>
-        </el-menu-item>
-        
-        <el-menu-item index="/requirement-management">
-          <el-icon class="menu-icon"><List /></el-icon>
-          <span>采购需求管理</span>
-        </el-menu-item>
-        
-        <el-menu-item index="/purchase-management">
-          <el-icon class="menu-icon"><ShoppingCart /></el-icon>
-          <span>采购管理</span>
-        </el-menu-item>
-        
-        <el-menu-item index="/inventory-management" v-if="userStore.user?.role === 'admin'">
-          <el-icon class="menu-icon"><Box /></el-icon>
-          <span>库存管理</span>
-        </el-menu-item>
-        
-        <el-menu-item index="/material-management" v-if="userStore.user?.role === 'admin'">
-          <el-icon class="menu-icon"><Box /></el-icon>
-          <span>辅料管理</span>
-        </el-menu-item>
-        
-        <el-sub-menu index="/supplier" v-if="userStore.user?.role === 'admin'">
-          <template #title>
-            <el-icon class="menu-icon"><User /></el-icon>
-            <span>供应商管理</span>
-          </template>
-          <el-menu-item index="/supplier">
-            <el-icon class="sub-menu-icon"><OfficeBuilding /></el-icon>
-            <span>供应商库</span>
+        <!-- 菜单项渲染 -->
+        <template v-for="item in menuItems" :key="item.index">
+          <!-- 有子菜单的菜单项 -->
+          <el-sub-menu :index="item.index" v-if="item.children && (!item.requireAdmin || userStore.user?.role === 'admin')">
+            <template #title>
+              <el-icon class="menu-icon"><component :is="item.icon" /></el-icon>
+              <span>{{ item.title }}</span>
+            </template>
+            <el-menu-item 
+              v-for="child in item.children" 
+              :key="child.index" 
+              :index="child.index"
+            >
+              <el-icon class="sub-menu-icon"><component :is="child.icon" /></el-icon>
+              <span>{{ child.title }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <!-- 无子菜单的菜单项 -->
+          <el-menu-item 
+            :index="item.index" 
+            v-else-if="!item.requireAdmin || userStore.user?.role === 'admin'"
+          >
+            <el-icon class="menu-icon"><component :is="item.icon" /></el-icon>
+            <span>{{ item.title }}</span>
           </el-menu-item>
-
-          <el-menu-item index="/supplier/relationship">
-            <el-icon class="sub-menu-icon"><Link /></el-icon>
-            <span>供需关系管理</span>
-          </el-menu-item>
-
-        </el-sub-menu>
-        
-        <el-menu-item index="/data-analysis">
-          <el-icon class="menu-icon"><PieChart /></el-icon>
-          <span>数据分析与报表</span>
-        </el-menu-item>
-
-        <el-sub-menu index="/system-management" v-if="userStore.user?.role === 'admin'">
-          <template #title>
-            <el-icon class="menu-icon"><Setting /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/system-management">
-            <el-icon class="sub-menu-icon"><Setting /></el-icon>
-            <span>系统概览</span>
-          </el-menu-item>
-          <el-menu-item index="/category-management">
-            <el-icon class="sub-menu-icon"><List /></el-icon>
-            <span>分类管理</span>
-          </el-menu-item>
-          <el-menu-item index="/user">
-            <el-icon class="sub-menu-icon"><User /></el-icon>
-            <span>用户管理</span>
-          </el-menu-item>
-        </el-sub-menu>
+        </template>
       </el-menu>
+      <div class="sidebar-toggle" @click="toggleSidebar">
+        <el-icon :class="{ 'rotate-180': isSidebarCollapsed }"><ArrowLeft /></el-icon>
+      </div>
     </el-aside>
     <el-container>
       <el-header class="header">
@@ -191,12 +151,12 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { changePassword } from '@/api/user'
-import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit } from '@element-plus/icons-vue'
+import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -223,6 +183,95 @@ const currentPageName = computed(() => {
   }
   return routeMap[route.path] || '首页'
 })
+
+// 菜单项数据
+const menuItems = [
+  {
+    index: '/dashboard',
+    icon: Odometer,
+    title: '仪表盘'
+  },
+  {
+    index: '/material-library',
+    icon: Search,
+    title: '智能辅料库'
+  },
+  {
+    index: '/project-scheme',
+    icon: Folder,
+    title: '项目方案管理'
+  },
+  {
+    index: '/requirement-management',
+    icon: List,
+    title: '采购需求管理'
+  },
+  {
+    index: '/purchase-management',
+    icon: ShoppingCart,
+    title: '采购管理'
+  },
+  {
+    index: '/inventory-management',
+    icon: Box,
+    title: '库存管理',
+    requireAdmin: true
+  },
+  {
+    index: '/material-management',
+    icon: GoodsFilled,
+    title: '辅料管理',
+    requireAdmin: true
+  },
+  {
+    index: '/supplier',
+    icon: UserFilled,
+    title: '供应商管理',
+    requireAdmin: true,
+    children: [
+      {
+        index: '/supplier',
+        icon: OfficeBuilding,
+        title: '供应商库'
+      },
+      {
+        index: '/supplier/relationship',
+        icon: Link,
+        title: '供需关系管理'
+      }
+    ]
+  },
+  {
+    index: '/data-analysis',
+    icon: PieChart,
+    title: '数据分析与报表'
+  },
+  {
+    index: '/system-management',
+    icon: Setting,
+    title: '系统管理',
+    requireAdmin: true,
+    children: [
+      {
+        index: '/system-management',
+        icon: Setting,
+        title: '系统概览'
+      },
+      {
+        index: '/category-management',
+        icon: List,
+        title: '分类管理'
+      },
+      {
+        index: '/user',
+        icon: UserFilled,
+        title: '用户管理'
+      }
+    ]
+  }
+]
+
+
 
 // 修改密码相关
 const changePasswordVisible = ref(false)
@@ -303,8 +352,42 @@ const translateRole = (role) => {
   return roleMap[role] || '普通用户'
 }
 
+// 侧边栏状态管理
+const isSidebarCollapsed = ref(false)
+
 // 菜单状态管理
 const openMenus = ref([])
+
+// 加载菜单状态
+const loadMenuState = () => {
+  // 从localStorage加载侧边栏状态
+  const collapsed = localStorage.getItem('sidebarCollapsed')
+  if (collapsed !== null) {
+    isSidebarCollapsed.value = JSON.parse(collapsed)
+  }
+  
+  // 从localStorage加载菜单展开状态
+  const savedOpenMenus = localStorage.getItem('openMenus')
+  if (savedOpenMenus) {
+    try {
+      openMenus.value = JSON.parse(savedOpenMenus)
+    } catch (e) {
+      console.error('Failed to parse openMenus from localStorage:', e)
+    }
+  }
+}
+
+// 保存菜单状态
+const saveMenuState = () => {
+  localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed.value))
+  localStorage.setItem('openMenus', JSON.stringify(openMenus.value))
+}
+
+// 切换侧边栏
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+  saveMenuState()
+}
 
 // 处理菜单选择
 const handleMenuSelect = (key, keyPath) => {
@@ -314,13 +397,40 @@ const handleMenuSelect = (key, keyPath) => {
     // 选择的是顶级菜单项，不是父菜单
     openMenus.value = []
   }
+  saveMenuState()
 }
 
 // 处理菜单展开
 const handleMenuOpen = (key, keyPath) => {
   // 只保存当前展开的父菜单
   openMenus.value = [key]
+  saveMenuState()
 }
+
+// 处理菜单收起
+const handleMenuClose = (key, keyPath) => {
+  openMenus.value = openMenus.value.filter(menuKey => menuKey !== key)
+  saveMenuState()
+}
+
+// 点击外部区域关闭菜单
+const handleClickOutside = (event) => {
+  // 点击外部区域关闭所有展开的菜单
+  if (openMenus.value.length > 0) {
+    openMenus.value = []
+    saveMenuState()
+  }
+}
+
+// 页面加载时执行
+onMounted(() => {
+  // 加载菜单状态
+  loadMenuState()
+  // 监听路由变化
+  router.afterEach(() => {
+    // 路由变化时可以执行一些操作
+  })
+})
 </script>
 
 <style scoped>
@@ -328,6 +438,11 @@ const handleMenuOpen = (key, keyPath) => {
 .layout-container {
   height: 100vh;
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+/* 移动端菜单展开按钮 - 默认隐藏 */
+.mobile-menu-toggle {
+  display: none !important;
 }
 
 /* 侧边栏 */
@@ -338,10 +453,67 @@ const handleMenuOpen = (key, keyPath) => {
   box-shadow: 0 0 30px rgba(33, 150, 243, 0.12);
   border: 1px solid #e0f2fe;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .sidebar:hover {
   box-shadow: 0 0 40px rgba(33, 150, 243, 0.18);
+}
+
+/* 侧边栏折叠状态 */
+.sidebar.sidebar-collapsed {
+  width: 80px !important;
+}
+
+/* 菜单搜索 */
+.menu-header {
+  padding: 0 16px 16px;
+}
+
+.menu-search {
+  border-radius: 12px !important;
+  border: 2px solid #e0f2fe !important;
+  transition: all 0.3s ease !important;
+}
+
+.menu-search:focus {
+  border-color: #2196f3 !important;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2) !important;
+}
+
+/* 侧边栏切换按钮 */
+.sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 40px;
+  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
+  border-radius: 0 10px 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.sidebar-toggle:hover {
+  background: linear-gradient(135deg, #1565c0 0%, #1e88e5 100%);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.sidebar-toggle el-icon {
+  color: white;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
 }
 
 /* Logo */
@@ -354,6 +526,13 @@ const handleMenuOpen = (key, keyPath) => {
   padding: 0 24px;
   border-radius: 0 24px 0 0;
   box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
+  transition: all 0.3s ease;
+}
+
+.logo-collapsed {
+  height: 72px;
+  justify-content: center;
+  padding: 0;
 }
 
 .logo-icon {
@@ -361,6 +540,12 @@ const handleMenuOpen = (key, keyPath) => {
   color: white;
   margin-right: 16px;
   animation: logoFloat 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.sidebar-collapsed .logo-icon {
+  margin-right: 0;
+  font-size: 32px;
 }
 
 .logo h2 {
@@ -370,6 +555,77 @@ const handleMenuOpen = (key, keyPath) => {
   margin: 0;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  animation: titleSlideIn 0.5s ease-out;
+}
+
+/* Logo 浮动动画 */
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* 标题滑入动画 */
+@keyframes titleSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 菜单 */
+.custom-menu {
+  border-right: none;
+  margin-top: 24px;
+  background: transparent !important;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+/* 滚动条样式 */
+.custom-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-menu::-webkit-scrollbar-track {
+  background: #f0f9ff;
+  border-radius: 3px;
+}
+
+.custom-menu::-webkit-scrollbar-thumb {
+  background: #bbdefb;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.custom-menu::-webkit-scrollbar-thumb:hover {
+  background: #90caf9;
+}
+
+/* 子菜单容器 */
+:deep(.el-sub-menu .el-menu) {
+  background: transparent !important;
+  animation: submenuSlideIn 0.3s ease-out;
+}
+
+/* 子菜单滑入动画 */
+@keyframes submenuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 菜单 */
@@ -389,6 +645,8 @@ const handleMenuOpen = (key, keyPath) => {
   margin-right: 16px;
   transition: all 0.3s ease;
   color: #2196f3;
+  position: relative;
+  z-index: 1;
 }
 
 .sub-menu-icon {
@@ -396,6 +654,280 @@ const handleMenuOpen = (key, keyPath) => {
   margin-right: 12px;
   transition: all 0.3s ease;
   color: #2196f3;
+  position: relative;
+  z-index: 1;
+}
+
+/* 侧边栏折叠状态下的样式 */
+.sidebar.sidebar-collapsed :deep(.el-menu-item) {
+  justify-content: center !important;
+  padding: 14px !important;
+  margin: 8px 8px !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-menu-item span) {
+  display: none !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-menu-item .menu-icon) {
+  margin-right: 0 !important;
+  font-size: 24px !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu__title) {
+  justify-content: center !important;
+  padding: 14px !important;
+  margin: 8px 8px !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu__title span) {
+  display: none !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu__title .menu-icon) {
+  margin-right: 0 !important;
+  font-size: 24px !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu__title .el-sub-menu__icon-arrow) {
+  display: none !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu .el-menu) {
+  position: absolute !important;
+  left: 100% !important;
+  top: 0 !important;
+  min-width: 180px !important;
+  background: white !important;
+  border-radius: 0 16px 16px 0 !important;
+  box-shadow: 0 0 20px rgba(33, 150, 243, 0.15) !important;
+  border: 1px solid #e0f2fe !important;
+  z-index: 100 !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu .el-menu-item) {
+  justify-content: flex-start !important;
+  padding: 12px 16px !important;
+  margin: 4px 8px !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu .el-menu-item span) {
+  display: inline !important;
+}
+
+.sidebar.sidebar-collapsed :deep(.el-sub-menu .el-menu-item .sub-menu-icon) {
+  margin-right: 12px !important;
+  font-size: 18px !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 200px !important;
+  }
+  
+  .sidebar.sidebar-collapsed {
+    width: 70px !important;
+  }
+  
+  .logo h2 {
+    font-size: 18px !important;
+  }
+  
+  .logo-icon {
+    font-size: 30px !important;
+  }
+  
+  .sidebar.sidebar-collapsed .logo-icon {
+    font-size: 28px !important;
+  }
+  
+  :deep(.el-menu-item) {
+    padding: 12px 20px !important;
+    font-size: 13px !important;
+  }
+  
+  :deep(.el-sub-menu__title) {
+    padding: 12px 20px !important;
+    font-size: 13px !important;
+  }
+  
+  .menu-icon {
+    font-size: 18px !important;
+    margin-right: 12px !important;
+  }
+  
+  .sub-menu-icon {
+    font-size: 16px !important;
+    margin-right: 10px !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .sidebar {
+    width: 70px !important;
+  }
+  
+  .sidebar :deep(.el-menu-item span) {
+    display: none !important;
+  }
+  
+  .sidebar :deep(.el-menu-item) {
+    justify-content: center !important;
+    padding: 14px !important;
+    margin: 8px 8px !important;
+  }
+  
+  .sidebar :deep(.el-menu-item .menu-icon) {
+    margin-right: 0 !important;
+    font-size: 24px !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu__title) {
+    justify-content: center !important;
+    padding: 14px !important;
+    margin: 8px 8px !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu__title span) {
+    display: none !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu__title .menu-icon) {
+    margin-right: 0 !important;
+    font-size: 24px !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu__title .el-sub-menu__icon-arrow) {
+    display: none !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu .el-menu) {
+    position: absolute !important;
+    left: 100% !important;
+    top: 0 !important;
+    min-width: 160px !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu .el-menu-item) {
+    justify-content: flex-start !important;
+    padding: 12px 16px !important;
+    margin: 4px 8px !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu .el-menu-item span) {
+    display: inline !important;
+  }
+  
+  .sidebar :deep(.el-sub-menu .el-menu-item .sub-menu-icon) {
+    margin-right: 12px !important;
+    font-size: 18px !important;
+  }
+  
+  .logo h2 {
+    display: none !important;
+  }
+  
+  .logo {
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+  
+  .logo-icon {
+    margin-right: 0 !important;
+  }
+  
+  .menu-header {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-container {
+    flex-direction: column !important;
+  }
+  
+  .sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    border-radius: 0 !important;
+    transform: translateX(0) !important;
+    transition: transform 0.3s ease !important;
+  }
+  
+  .sidebar.sidebar-collapsed {
+    transform: translateX(-100%) !important;
+  }
+  
+  .sidebar-toggle {
+    right: 10px !important;
+  }
+  
+  .el-main {
+    margin-left: 0 !important;
+  }
+  
+  .header {
+    margin-left: 0 !important;
+  }
+  
+  /* 移动端菜单展开按钮 */
+  .mobile-menu-toggle {
+    display: block !important;
+    position: fixed !important;
+    left: 10px !important;
+    top: 10px !important;
+    z-index: 1001 !important;
+    background: white !important;
+    border: 2px solid #e0f2fe !important;
+    border-radius: 50% !important;
+    width: 48px !important;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3) !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+  }
+  
+  .mobile-menu-toggle:hover {
+    background: #f0f9ff !important;
+    transform: scale(1.1) !important;
+  }
+}
+
+/* 菜单展开/收起动画 */
+:deep(.el-sub-menu .el-menu-item) {
+  animation: menuItemSlideIn 0.3s ease-out;
+}
+
+@keyframes menuItemSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 菜单项点击效果 */
+:deep(.el-menu-item) {
+  cursor: pointer;
+  position: relative;
+}
+
+:deep(.el-menu-item:active) {
+  transform: translateX(8px) scale(0.98) !important;
+}
+
+:deep(.el-sub-menu__title:active) {
+  transform: translateX(8px) scale(0.98) !important;
 }
 
 /* 菜单项 */
@@ -421,7 +953,11 @@ const handleMenuOpen = (key, keyPath) => {
   right: 0 !important;
   bottom: 0 !important;
   border-radius: 16px !important;
-  background: radial-gradient(circle at center, rgba(224, 242, 254, 0.6) 0%, rgba(191, 219, 254, 0.3) 30%, rgba(240, 249, 255, 0.1) 60%, rgba(240, 249, 255, 0) 100%) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08) !important;
   opacity: 1 !important;
   transition: all 0.3s ease !important;
   z-index: 0 !important;
@@ -488,7 +1024,11 @@ const handleMenuOpen = (key, keyPath) => {
   right: 0 !important;
   bottom: 0 !important;
   border-radius: 12px !important;
-  background: radial-gradient(circle at center, rgba(224, 242, 254, 0.5) 0%, rgba(191, 219, 254, 0.25) 30%, rgba(240, 249, 255, 0.08) 60%, rgba(240, 249, 255, 0) 100%) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08) !important;
   opacity: 1 !important;
   transition: all 0.3s ease !important;
   z-index: 0 !important;
@@ -545,7 +1085,11 @@ const handleMenuOpen = (key, keyPath) => {
   right: 0 !important;
   bottom: 0 !important;
   border-radius: 16px !important;
-  background: radial-gradient(circle at center, rgba(224, 242, 254, 0.6) 0%, rgba(191, 219, 254, 0.3) 30%, rgba(240, 249, 255, 0.1) 60%, rgba(240, 249, 255, 0) 100%) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08) !important;
   opacity: 1 !important;
   transition: all 0.3s ease !important;
   z-index: 0 !important;

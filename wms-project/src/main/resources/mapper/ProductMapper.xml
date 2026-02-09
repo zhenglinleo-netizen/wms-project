@@ -15,6 +15,9 @@
         <result column="expected_delivery_days" property="expectedDeliveryDays"/>
         <result column="description" property="description"/>
         <result column="status" property="status"/>
+        <result column="file_hash" property="fileHash"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="images" property="images"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
@@ -33,6 +36,9 @@
           m.expected_delivery_days,
           m.description,
           m.status,
+          m.file_hash,
+          m.image_url,
+          m.images,
           m.create_time,
           m.update_time
         FROM material m
@@ -54,6 +60,9 @@
           m.expected_delivery_days,
           m.description,
           m.status,
+          m.file_hash,
+          m.image_url,
+          m.images,
           m.create_time,
           m.update_time
         FROM material m
@@ -75,6 +84,9 @@
           m.expected_delivery_days,
           m.description,
           m.status,
+          m.file_hash,
+          m.image_url,
+          m.images,
           m.create_time,
           m.update_time
         FROM material m
@@ -96,6 +108,9 @@
           m.expected_delivery_days,
           m.description,
           m.status,
+          m.file_hash,
+          m.image_url,
+          m.images,
           m.create_time,
           m.update_time
         FROM material m
@@ -118,7 +133,7 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO material (material_code, material_name, category_id, type, style, specification, unit, price, description, status)
+        INSERT INTO material (material_code, material_name, category_id, type, style, specification, unit, price, description, status, file_hash, image_url, images)
         VALUES (
           #{productCode},
           #{productName},
@@ -129,7 +144,10 @@
           #{unit},
           #{price},
           #{description},
-          #{status}
+          #{status},
+          #{fileHash},
+          #{imageUrl},
+          #{images}
         )
     </insert>
 
@@ -149,6 +167,9 @@
             <if test="expectedDeliveryDays != null">expected_delivery_days = #{expectedDeliveryDays},</if>
             <if test="description != null">description = #{description},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="fileHash != null">file_hash = #{fileHash},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="images != null">images = #{images},</if>
         </set>
         WHERE id = #{id}
     </update>
@@ -157,6 +178,29 @@
         DELETE FROM material WHERE id = #{id}
     </delete>
 
+    <select id="selectByFileHash" resultMap="BaseResultMap">
+        SELECT 
+          m.id,
+          m.material_code AS product_code,
+          m.material_name AS product_name,
+          mc.category_name AS category,
+          m.type,
+          m.style,
+          m.specification,
+          m.unit,
+          m.price,
+          m.expected_delivery_days,
+          m.description,
+          m.status,
+          m.file_hash,
+          m.image_url,
+          m.images,
+          m.create_time,
+          m.update_time
+        FROM material m
+        LEFT JOIN material_category mc ON m.category_id = mc.id
+        WHERE m.file_hash = #{fileHash}
+    </select>
 </mapper>
 
 

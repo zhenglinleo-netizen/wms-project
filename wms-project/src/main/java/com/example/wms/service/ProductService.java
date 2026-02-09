@@ -7,6 +7,7 @@ public interface ProductService {
     List<Product> getAllProducts();
     List<Product> getProductsByCondition(Product product);
     Product getProductById(Long id);
+    Product getProductByFileHash(String fileHash);
     int saveProduct(Product product);
     int updateProduct(Product product);
     int deleteProduct(Long id);
