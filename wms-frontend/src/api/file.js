@@ -10,7 +10,7 @@ export function uploadFile(file) {
   formData.append('file', file)
   
   return request({
-    url: '/api/file/upload',
+    url: '/file/upload',
     method: 'post',
     data: formData,
     headers: {
@@ -26,7 +26,7 @@ export function uploadFile(file) {
  */
 export function deleteFile(filename) {
   return request({
-    url: '/api/file/delete',
+    url: '/file/delete',
     method: 'delete',
     params: {
       filename
@@ -44,7 +44,7 @@ export function checkFileExists(file) {
   formData.append('file', file)
   
   return request({
-    url: '/api/file/checkExists',
+    url: '/file/checkExists',
     method: 'post',
     data: formData,
     headers: {
@@ -65,7 +65,7 @@ export function uploadMultipleFiles(files) {
   })
   
   return request({
-    url: '/api/file/upload-multiple',
+    url: '/file/upload-multiple',
     method: 'post',
     data: formData,
     headers: {

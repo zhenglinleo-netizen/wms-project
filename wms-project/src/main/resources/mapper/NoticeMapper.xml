@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.NoticeMapper">
+    
+    <resultMap id="BaseResultMap" type="com.example.wms.entity.Notice">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="type" property="type"/>
+        <result column="is_read" property="isRead"/>
+        <result column="related_id" property="relatedId"/>
+        <result column="related_type" property="relatedType"/>
+        <result column="priority" property="priority"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+    
+    <insert id="insert" parameterType="com.example.wms.entity.Notice" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_notice (user_id, title, content, type, is_read, related_id, related_type, priority)
+        VALUES (#{userId}, #{title}, #{content}, #{type}, #{isRead}, #{relatedId}, #{relatedType}, #{priority})
+    </insert>
+    
+    <update id="updateById" parameterType="com.example.wms.entity.Notice">
+        UPDATE user_notice
+        SET is_read = #{isRead},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+    
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT * FROM user_notice WHERE id = #{id}
+    </select>
+    
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM user_notice
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+    
+    <select id="countUnreadByUserId" parameterType="java.lang.Long" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM user_notice
+        WHERE user_id = #{userId} AND is_read = 0
+    </select>
+    
+    <update id="markAsRead">
+        UPDATE user_notice
+        SET is_read = 1,
+            update_time = NOW()
+        WHERE user_id = #{userId} AND id = #{noticeId}
+    </update>
+    
+    <update id="markAllAsRead" parameterType="java.lang.Long">
+        UPDATE user_notice
+        SET is_read = 1,
+            update_time = NOW()
+        WHERE user_id = #{userId} AND is_read = 0
+    </update>
+    
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM user_notice WHERE id = #{id}
+    </delete>
+    
+</mapper>

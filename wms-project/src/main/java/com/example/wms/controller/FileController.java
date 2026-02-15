@@ -14,7 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletResponse;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/file")
@@ -93,7 +95,7 @@ public class FileController {
      * 检查文件是否已存在（通过哈希值）
      */
     @PostMapping("/checkExists")
-    public Result<Boolean> checkFileExists(@RequestParam("file") MultipartFile file) {
+    public Result<Map<String, Object>> checkFileExists(@RequestParam("file") MultipartFile file) {
         try {
             if (file.isEmpty()) {
                 return Result.error("文件不能为空");
@@ -105,7 +107,12 @@ public class FileController {
             // 检查是否已存在相同哈希值的辅料
             boolean exists = productService.getProductByFileHash(fileHash) != null;
 
-            return Result.success(exists ? "文件已存在" : "文件不存在", exists);
+            // 构建返回结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("exists", exists);
+            result.put("fileHash", fileHash);
+
+            return Result.success(exists ? "文件已存在" : "文件不存在", result);
         } catch (Exception e) {
             return Result.error("检查失败: " + e.getMessage());
         }

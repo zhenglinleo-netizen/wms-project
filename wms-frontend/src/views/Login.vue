@@ -154,6 +154,7 @@
       width="450px" 
       center
       class="forgot-password-dialog"
+      append-to-body
     >
       <el-form 
         :model="forgotPasswordForm" 

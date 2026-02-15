@@ -28,10 +28,18 @@
           <div class="card-inner">
             <div class="image-wrapper">
               <el-image 
-                :src="material.thumbnail || `https://neeko-copilot.bytedance.net/api/text2image?prompt=fabric%20material%20texture%20sample&image_size=square`" 
+                :src="material.thumbnail || ''"
                 fit="cover" 
-                class="material-image" 
-              />
+                class="material-image"
+                :alt="material.productName"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon class="image-icon"><Picture /></el-icon>
+                    <div class="image-text">图片未存储</div>
+                  </div>
+                </template>
+              </el-image>
             </div>
             <div class="card-content">
               <div class="material-title" :title="material.productName">{{ material.productName }}</div>
@@ -60,7 +68,7 @@
     </el-row>
 
     <!-- 供应商关系弹窗 -->
-    <el-dialog v-model="relationshipDialogVisible" :title="currentMaterialName + ' - 供应商关系'" width="70%">
+    <el-dialog v-model="relationshipDialogVisible" :title="currentMaterialName + ' - 供应商关系'" width="70%" append-to-body>
       <div v-if="currentMaterialRelationships.length === 0" class="no-relationships">
         <el-empty description="暂无关联供应商" :image-size="80" />
         <el-button type="primary" style="margin-top: 20px;" @click="handleAddRelationshipToMaterial(currentMaterialId)">
@@ -126,6 +134,7 @@
       v-model="dialogVisible"
       :title="dialogType === 'add' ? '添加供应商-辅料关系' : '编辑供应商-辅料关系'"
       width="500px"
+      append-to-body
     >
       <el-form :model="relationshipForm" :rules="relationshipRules" ref="relationshipFormRef" label-width="100px">
         <el-form-item label="供应商" prop="supplierId">
@@ -193,7 +202,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Edit, Delete, Link } from '@element-plus/icons-vue'
+import { Plus, Search, Edit, Delete, Link, Picture } from '@element-plus/icons-vue'
 import { getSupplierProducts, createSupplierProduct, updateSupplierProduct, deleteSupplierProduct, getSuppliers, getMaterials } from '@/api/supplier'
 
 // 数据
@@ -265,8 +274,27 @@ const loadSuppliers = async () => {
 const loadMaterials = async () => {
   try {
     const response = await getMaterials()
-    materials.value = response.data
+    materials.value = response.data.map(item => {
+      let imageUrl = item.imageUrl
+      // 过滤掉错误的图片URL（如"上传成功"）
+      if (!imageUrl || imageUrl === '上传成功' || imageUrl === '[]' || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+        imageUrl = null
+      } else {
+        // 提取文件名（忽略bucket名称）
+        const lastSlashIndex = imageUrl.lastIndexOf('/')
+        if (lastSlashIndex !== -1) {
+          let filename = imageUrl.substring(lastSlashIndex + 1)
+          // 使用后端接口获取图片，避免MinIO认证问题
+          imageUrl = `/api/file/get-image?filename=${filename}`
+        }
+      }
+      return {
+        ...item,
+        thumbnail: imageUrl // 确保thumbnail字段可用
+      }
+    })
   } catch (error) {
+    console.error('加载辅料失败:', error)
     ElMessage.error('加载辅料失败')
   }
 }
@@ -514,6 +542,30 @@ const showMaterialRelationships = (materialId) => {
 
 .material-card:hover .material-image {
   transform: scale(1.05);
+}
+
+.image-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.image-icon {
+  font-size: 24px;
+  color: #909399;
+  margin-bottom: 8px;
+}
+
+.image-text {
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+  padding: 0 8px;
 }
 
 .card-content {

@@ -85,7 +85,7 @@
     </el-card>
 
     <!-- 项目编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" append-to-body>
       <el-form :model="form" label-width="80px" @submit.prevent="handleSubmit">
         <el-form-item label="项目名称" required>
           <el-input v-model="form.projectName" />
@@ -121,7 +121,7 @@
     </el-dialog>
 
     <!-- 方案添加弹窗 -->
-    <el-dialog v-model="schemeDialogVisible" title="添加设计方案" width="400px">
+    <el-dialog v-model="schemeDialogVisible" title="添加设计方案" width="400px" append-to-body>
       <el-form :model="schemeForm" label-width="80px" @submit.prevent="submitScheme">
         <el-form-item label="方案名称" required>
           <el-input v-model="schemeForm.schemeName" placeholder="如：方案A-简约风" />        </el-form-item>

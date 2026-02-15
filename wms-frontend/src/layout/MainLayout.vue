@@ -101,6 +101,7 @@
         title="修改密码" 
         width="450px"
         class="custom-dialog"
+        append-to-body
       >
         <el-form 
           :model="changePasswordForm" 

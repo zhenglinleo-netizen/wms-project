@@ -4,7 +4,7 @@ import router from '@/router'
 
 const service = axios.create({
   baseURL: '/api',
-  timeout: 10000
+  timeout: 30000
 })
 
 service.interceptors.request.use(
@@ -14,15 +14,28 @@ service.interceptors.request.use(
       config.headers = config.headers || {}
       config.headers['Authorization'] = `Bearer ${token}`
     }
+    // 添加请求日志
+    console.log('发送请求:', {
+      url: config.url,
+      method: config.method,
+      timeout: config.timeout,
+      headers: config.headers
+    });
     return config
   },
   error => {
+    console.error('请求发送失败:', error);
     return Promise.reject(error)
   }
 )
 
 service.interceptors.response.use(
   response => {
+    console.log('收到响应:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
     const res = response.data
     if (res.code === 200) {
       return res
@@ -37,6 +50,12 @@ service.interceptors.response.use(
     }
   },
   error => {
+    console.error('响应错误:', {
+      message: error.message,
+      code: error.code,
+      config: error.config,
+      response: error.response
+    });
     // HTTP 状态码错误处理
     if (error.response) {
       if (error.response.status === 403) {

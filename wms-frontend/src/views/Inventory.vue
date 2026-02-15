@@ -25,6 +25,7 @@
               fit="cover" 
               style="width: 60px; height: 60px; border-radius: 4px; margin: 0 auto; display: block;"
               :preview-src-list="[scope.row.imageUrl || 'https://via.placeholder.com/60']"
+              preview-teleported
             />
           </template>
         </el-table-column>

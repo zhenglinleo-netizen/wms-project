@@ -5,6 +5,8 @@ import com.example.wms.entity.MaterialCategory;
 import com.example.wms.mapper.ProductMapper;
 import com.example.wms.mapper.MaterialCategoryMapper;
 import com.example.wms.service.ProductService;
+import com.example.wms.utils.CacheKeyUtil;
+import com.example.wms.utils.CacheManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -16,10 +18,18 @@ public class ProductServiceImpl implements ProductService {
     private ProductMapper productMapper;
     @Autowired
     private MaterialCategoryMapper categoryMapper;
+    @Autowired
+    private CacheManager cacheManager;
 
     @Override
     public List<Product> getAllProducts() {
-        return productMapper.selectAll();
+        String cacheKey = CacheKeyUtil.getProductListKey();
+        List<Product> products = cacheManager.get(cacheKey, List.class);
+        if (products == null) {
+            products = productMapper.selectAll();
+            cacheManager.set(cacheKey, products, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
+        }
+        return products;
     }
 
     @Override
@@ -29,12 +39,28 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product getProductById(Long id) {
-        return productMapper.selectById(id);
+        String cacheKey = CacheKeyUtil.getProductKey(id);
+        Product product = cacheManager.get(cacheKey, Product.class);
+        if (product == null) {
+            product = productMapper.selectById(id);
+            if (product != null) {
+                cacheManager.set(cacheKey, product, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
+            }
+        }
+        return product;
     }
 
     @Override
     public Product getProductByFileHash(String fileHash) {
-        return productMapper.selectByFileHash(fileHash);
+        String cacheKey = CacheKeyUtil.getProductByFileHashKey(fileHash);
+        Product product = cacheManager.get(cacheKey, Product.class);
+        if (product == null) {
+            product = productMapper.selectByFileHash(fileHash);
+            if (product != null) {
+                cacheManager.set(cacheKey, product, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
+            }
+        }
+        return product;
     }
 
     @Override
@@ -73,7 +99,15 @@ public class ProductServiceImpl implements ProductService {
                 }
             }
         }
-        return productMapper.insert(product);
+        
+        int result = productMapper.insert(product);
+        
+        // 清除缓存
+        if (result > 0) {
+            cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+        }
+        
+        return result;
     }
 
     @Override
@@ -81,12 +115,27 @@ public class ProductServiceImpl implements ProductService {
         if (product.getStatus() != null && product.getStatus() == 2 && product.getPrice() != null && product.getPrice().compareTo(java.math.BigDecimal.ZERO) > 0) {
             product.setStatus(1);
         }
-        return productMapper.update(product);
+        
+        int result = productMapper.update(product);
+        
+        // 清除缓存
+        if (result > 0) {
+            cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+        }
+        
+        return result;
     }
 
     @Override
     public int deleteProduct(Long id) {
-        return productMapper.deleteById(id);
+        int result = productMapper.deleteById(id);
+        
+        // 清除缓存
+        if (result > 0) {
+            cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+        }
+        
+        return result;
     }
 }
 

@@ -1,5 +1,7 @@
 <template>
   <div>
+    <!-- 首屏内容：立即加载 -->
+    <el-image v-if="materials.length > 0 && materials[0].image" :src="materials[0].image" loading="eager" style="display: none;" />
     <!-- 搜索与筛选栏 -->
     <el-card shadow="hover" :body-style="{ padding: '20px' }">
       <!-- 主要搜索栏 -->
@@ -92,6 +94,9 @@
           <el-button type="primary" :icon="Star" @click="toggleFavoritesView" round>
             {{ showFavorites ? '全部辅料' : '我的收藏' }}
           </el-button>
+          <el-button type="danger" :icon="Star" @click="toggleRecommendationsView" round>
+            {{ showRecommendations ? '全部辅料' : '推荐' }}
+          </el-button>
         </el-space>
       </div>
     </el-card>
@@ -99,10 +104,10 @@
     <!-- 辅料列表 -->
     <div style="padding: 0 20px 20px;">
       <!-- 列表头部 -->
-      <div style="margin: 20px 0; display: flex; justify-content: space-between; align-items: center;">
-        <el-text :type="'primary'" :size="'large'">
-          {{ showFavorites ? '我的收藏' : '辅料列表' }} ({{ materials.length }})
-        </el-text>
+        <div style="margin: 20px 0; display: flex; justify-content: space-between; align-items: center;">
+          <el-text :type="'primary'" :size="'large'">
+            {{ showRecommendations ? '推荐辅料' : showFavorites ? '我的收藏' : '辅料列表' }} ({{ materials.length }})
+          </el-text>
         <el-space>
           <el-select v-model="sortBy" placeholder="排序方式" size="small">
             <el-option label="默认" value="default" />
@@ -125,81 +130,81 @@
               shadow="hover" 
               :body-style="{ padding: '15px' }"
             >
-          <el-image 
-            v-if="item.image"
-            :src="item.image" 
-            fit="cover" 
-            style="width: 100%; height: 200px; border-radius: 8px; cursor: pointer;"
-            @click="showDetail(item, $event)"
-            :error="handleImageError"
-          >
-            <template #error>
-              <div style="width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px;">
+              <el-image 
+                v-if="item.image"
+                :src="item.image"
+                loading="lazy"
+                fit="cover" 
+                style="width: 100%; height: 200px; border-radius: 8px; cursor: pointer;"
+                @click="showDetail(item, $event)"
+              >
+                <template #error>
+                  <div style="width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px;">
+                    <el-empty description="暂无图片" :image-size="60" />
+                  </div>
+                </template>
+              </el-image>
+              <div v-else style="width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px; cursor: pointer;" @click="showDetail(item, $event)">
                 <el-empty description="暂无图片" :image-size="60" />
               </div>
-            </template>
-          </el-image>
-          <div v-else style="width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px; cursor: pointer;" @click="showDetail(item, $event)">
-            <el-empty description="暂无图片" :image-size="60" />
-          </div>
-          <el-badge 
-            v-if="item.stock === 0" 
-            value="缺货" 
-            type="danger" 
-            :offset="[-10, 10]"
-          />
-          
-          <div style="margin-top: 15px;">
-            <el-space direction="vertical" size="small" style="width: 100%;">
-              <el-text :truncate="{ rows: 1 }" :type="'primary'" :strong="true" style="font-size: 16px;">
-                {{ item.productName }}
-              </el-text>
+              <el-badge 
+                v-if="item.stock === 0" 
+                value="缺货" 
+                type="danger" 
+                :offset="[-10, 10]"
+              />
               
-              <el-space size="small" style="flex-wrap: wrap;">
-                <el-tag size="small" effect="plain">{{ item.category || '未分类' }}</el-tag>
-                <el-tag size="small" effect="plain" v-if="item.material">{{ item.material }}</el-tag>
-                <el-tag size="small" effect="plain" v-if="item.color">{{ item.color }}</el-tag>
-              </el-space>
+              <div style="margin-top: 15px;">
+                <el-space direction="vertical" size="small" style="width: 100%;">
+                  <el-text :truncate="{ rows: 1 }" :type="'primary'" :strong="true" style="font-size: 16px;">
+                    {{ item.productName }}
+                  </el-text>
+                  
+                  <el-space size="small" style="flex-wrap: wrap;">
+                    <el-tag size="small" effect="plain">{{ item.category || '未分类' }}</el-tag>
+                    <el-tag size="small" effect="plain" v-if="item.material">{{ item.material }}</el-tag>
+                    <el-tag size="small" effect="plain" v-if="item.color">{{ item.color }}</el-tag>
+                  </el-space>
+                  
+                  <el-text :type="'danger'" :strong="true" style="font-size: 18px;">
+                    ¥{{ item.price }} / {{ item.unit }}
+                  </el-text>
+                  
+                  <el-space size="small" style="justify-content: space-between; width: 100%; margin-top: 10px;">
+                    <el-text size="small" type="info">
+                      库存: {{ item.stock || 0 }}
+                    </el-text>
+                    <el-text size="small">
+                      {{ item.supplier || '未知供应商' }}
+                    </el-text>
+                  </el-space>
+                </el-space>
+              </div>
               
-              <el-text :type="'danger'" :strong="true" style="font-size: 18px;">
-                ¥{{ item.price }} / {{ item.unit }}
-              </el-text>
-              
-              <el-space size="small" style="justify-content: space-between; width: 100%; margin-top: 10px;">
-                <el-text size="small" type="info">
-                  库存: {{ item.stock || 0 }}
-                </el-text>
-                <el-text size="small">
-                  {{ item.supplier || '未知供应商' }}
-                </el-text>
-              </el-space>
-            </el-space>
-          </div>
-          
-          <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
-            <el-button 
-              :icon="Star" 
-              circle 
-              :type="isFavorited(item.id) ? 'warning' : ''"
-              @click="toggleFavorite(item.id)"
-              :title="isFavorited(item.id) ? '取消收藏' : '添加收藏'"
-            />
-            <el-button 
-              :icon="ShoppingCart" 
-              type="primary" 
-              circle 
-              @click="openProjectSchemeDialog(item)"
-              title="添加到项目"
-            />
-            <el-button 
-              :icon="View" 
-              type="info" 
-              circle 
-              @click="showDetail(item, $event)"
-              title="查看详情"
-            />
-          </div>
-          </el-card>
+              <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                <el-button 
+                  :icon="Star" 
+                  circle 
+                  :type="isFavorited(item.id) ? 'warning' : ''"
+                  @click="toggleFavorite(item.id)"
+                  :title="isFavorited(item.id) ? '取消收藏' : '添加收藏'"
+                />
+                <el-button 
+                  :icon="ShoppingCart" 
+                  type="primary" 
+                  circle 
+                  @click="openProjectSchemeDialog(item)"
+                  title="添加到项目"
+                />
+                <el-button 
+                  :icon="View" 
+                  type="info" 
+                  circle 
+                  @click="showDetail(item, $event)"
+                  title="查看详情"
+                />
+              </div>
+            </el-card>
           </div>
         </el-col>
       </el-row>
@@ -210,7 +215,7 @@
           <template #default="scope">
             <el-space>
               <el-image 
-                :src="scope.row.image || 'https://via.placeholder.com/50'" 
+                v-lazy="scope.row.image || 'https://via.placeholder.com/50'"
                 fit="cover" 
                 style="width: 40px; height: 40px; border-radius: 4px;"
               />
@@ -288,11 +293,10 @@
       title="AI 智能辅料识别" 
       width="60%"
       :before-close="handleAIDialogClose"
-      :height="600"
       destroy-on-close
+      append-to-body
     >
-      <el-scrollbar height="500px" wrap-style="overflow-x: hidden;">
-        <div style="padding: 0 10px;">
+      <div style="max-height: 500px; overflow-y: auto; overflow-x: hidden; padding: 0 10px;">
       <!-- 上传区域 -->
       <div v-if="!recognitionResult">
         <el-upload
@@ -377,11 +381,17 @@
           </el-text>
           <div style="margin-top: 10px;">
             <el-image
-              v-if="recognitionResult.image"
-              :src="recognitionResult.image"
+              v-if="recognitionResult?.image || uploadedFiles[0]?.url"
+              v-lazy="recognitionResult?.image || uploadedFiles[0]?.url"
               fit="cover"
               style="width: 200px; height: 200px; border-radius: 4px;"
-            />
+            >
+              <template #error>
+                <div style="width: 200px; height: 200px; border: 1px dashed #d9d9d9; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                  <el-text type="info">图片加载失败</el-text>
+                </div>
+              </template>
+            </el-image>
             <div v-else style="width: 200px; height: 200px; border: 1px dashed #d9d9d9; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
               <el-text type="info">无识别图片</el-text>
             </div>
@@ -449,6 +459,14 @@
                       <el-option label="面料" value="面料" />
                       <el-option label="辅料" value="辅料" />
                       <el-option label="扣件" value="扣件" />
+                      <el-option v-if="recognitionResult?.category" :label="recognitionResult.category" :value="recognitionResult.category">
+                        <template #default>
+                          <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>{{ recognitionResult.category }}</span>
+                            <span style="color: #999; font-size: 12px;">AI识别</span>
+                          </div>
+                        </template>
+                      </el-option>
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -456,6 +474,14 @@
                   <el-form-item label="校正具体类型">
                     <el-select v-model="correctionForm.type" placeholder="选择具体类型" filterable allow-create>
                       <el-option v-for="type in typeOptions" :key="type" :label="type" :value="type" />
+                      <el-option v-if="recognitionResult?.type" :label="recognitionResult.type" :value="recognitionResult.type">
+                        <template #default>
+                          <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>{{ recognitionResult.type }}</span>
+                            <span style="color: #999; font-size: 12px;">AI识别</span>
+                          </div>
+                        </template>
+                      </el-option>
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -468,6 +494,14 @@
                       <el-option label="毛" value="毛" />
                       <el-option label="涤纶" value="涤纶" />
                       <el-option label="混纺" value="混纺" />
+                      <el-option v-if="recognitionResult?.material" :label="recognitionResult.material" :value="recognitionResult.material">
+                        <template #default>
+                          <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>{{ recognitionResult.material }}</span>
+                            <span style="color: #999; font-size: 12px;">AI识别</span>
+                          </div>
+                        </template>
+                      </el-option>
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -481,6 +515,14 @@
                       <el-option label="黑色" value="黑色" />
                       <el-option label="白色" value="白色" />
                       <el-option label="灰色" value="灰色" />
+                      <el-option v-if="recognitionResult?.color" :label="recognitionResult.color" :value="recognitionResult.color">
+                        <template #default>
+                          <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>{{ recognitionResult.color }}</span>
+                            <span style="color: #999; font-size: 12px;">AI识别</span>
+                          </div>
+                        </template>
+                      </el-option>
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -512,7 +554,7 @@
                 <el-col :span="8" v-for="(item, index) in recognitionResult.similar" :key="index">
                   <el-card shadow="hover" :body-style="{ padding: '10px' }">
                     <el-image 
-                      :src="item.image || 'https://via.placeholder.com/100'" 
+                      v-lazy="item.image || 'https://via.placeholder.com/100'"
                       fit="cover" 
                       style="width: 100%; height: 100px; border-radius: 4px; margin-bottom: 10px;"
                     />
@@ -547,12 +589,11 @@
           </el-button>
         </div>
       </div>
-        </div>
-      </el-scrollbar>
+      </div>
     </el-dialog>
 
     <!-- 图片搜索弹窗 -->
-    <el-dialog v-model="imageSearchVisible" title="图片搜索" width="50%">
+    <el-dialog v-model="imageSearchVisible" title="图片搜索" width="50%" append-to-body>
       <el-upload
         drag
         action="#"
@@ -572,7 +613,7 @@
           <el-card shadow="hover">
             <el-image 
               v-if="item.image"
-              :src="item.image" 
+              v-lazy="item.image"
               fit="cover"
               style="width: 100%; height: 150px;"
             />
@@ -595,7 +636,7 @@
       </el-space>
     </el-dialog>
 
-    <el-dialog v-model="aiHistoryVisible" title="AI 识别历史" width="80%">
+    <el-dialog v-model="aiHistoryVisible" title="AI 识别历史" width="80%" append-to-body>
       <el-table :data="recognitionHistory" style="width: 100%">
         <el-table-column prop="timestamp" label="识别时间" width="180" />
         <el-table-column prop="category" label="类别" width="100" />
@@ -612,7 +653,7 @@
           <template #default="scope">
             <el-image 
               v-if="scope.row.image"
-              :src="scope.row.image" 
+              v-lazy="scope.row.image"
               fit="cover" 
               style="width: 50px; height: 50px; border-radius: 4px;" 
             />
@@ -668,12 +709,19 @@
           <div style="margin-bottom: 15px;">
             <el-image 
               v-if="currentMaterial.image || currentMaterial.imageUrl || currentMaterial.images"
-              :src="currentMaterial.image || currentMaterial.imageUrl || (currentMaterial.images ? JSON.parse(currentMaterial.images)[0] : '')" 
+              :src="getProcessedImageUrl(currentMaterial)"
+              loading="lazy"
               fit="contain" 
               style="width: 100%; max-height: 400px; border-radius: 8px; background-color: #f5f7fa;"
               preview-teleported
               :preview-src-list="getImagePreviewList(currentMaterial)"
-            />
+            >
+              <template #error>
+                <div style="width: 100%; height: 400px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px;">
+                  <el-empty description="图片加载失败" :image-size="80" />
+                </div>
+              </template>
+            </el-image>
             <el-empty v-else description="暂无图片" :image-size="80" />
           </div>
           
@@ -802,7 +850,7 @@
               >
                 <el-image 
                   v-if="item.image"
-                  :src="item.image" 
+                  v-lazy="item.image"
                   fit="cover"
                   style="width: 100%; height: 80px; border-radius: 4px; margin-bottom: 8px;"
                 />
@@ -855,7 +903,7 @@
               >
                 <el-image 
                   v-if="rec.image"
-                  :src="rec.image" 
+                  v-lazy="rec.image"
                   fit="cover"
                   style="width: 100%; height: 80px; border-radius: 4px; margin-bottom: 8px;"
                 />
@@ -886,7 +934,7 @@
     </el-popover>
     
     <!-- 添加辅料对话框 -->
-    <el-dialog v-model="addMaterialDialog" title="添加新辅料" width="600px">
+    <el-dialog v-model="addMaterialDialog" title="添加新辅料" width="600px" append-to-body>
       <el-form :model="addMaterialForm" :rules="addMaterialRules" ref="addMaterialFormRef" label-width="100px">
         <el-form-item label="辅料编码">
           <el-input v-model="addMaterialForm.productCode" placeholder="请输入辅料编码" />          </el-form-item>
@@ -926,7 +974,7 @@
     </el-dialog>
 
     <!-- 选择项目方案对话框 -->
-    <el-dialog v-model="projectSchemeDialogVisible" title="选择项目方案" width="500px">
+    <el-dialog v-model="projectSchemeDialogVisible" title="选择项目方案" width="500px" append-to-body>
       <el-form :model="{}" label-width="80px">
         <el-form-item label="选择项目" required>
           <el-select v-model="selectedProject" placeholder="请选择项目" style="width: 100%" @change="handleProjectChange">
@@ -951,7 +999,7 @@
     </el-dialog>
     
     <!-- 上传更多图片对话框 -->
-    <el-dialog v-model="uploadMoreImagesDialog" title="上传更多图片" width="500px">
+    <el-dialog v-model="uploadMoreImagesDialog" title="上传更多图片" width="500px" append-to-body>
       <div style="padding: 20px 0;">
         <el-upload
           drag
@@ -995,7 +1043,7 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { Camera, Star, ShoppingCart, UploadFilled, Loading, Clock, Search, RefreshLeft, View, Refresh, ZoomIn, CopyDocument, Share, DataAnalysis, Close, Upload } from '@element-plus/icons-vue'
 import { getMaterialList, recognizeMaterial, searchByImage } from '@/api/material'
-import { saveProduct, updateProduct } from '@/api/product'
+import { saveProduct, updateProduct, recommendProducts } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
 import { getInventoryList } from '@/api/inventory'
 import { uploadFile, deleteFile, checkFileExists, uploadMultipleFiles } from '@/api/file'
@@ -1024,6 +1072,9 @@ const activeFilterTabs = ref(['filters'])
 
 // 收藏视图切换
 const showFavorites = ref(false)
+
+// 推荐视图切换
+const showRecommendations = ref(false)
 
 // Favorite functionality
 const favoriteMaterials = ref(new Set())
@@ -1058,10 +1109,26 @@ const isFavorited = (materialId) => {
 // Toggle favorites view
 const toggleFavoritesView = () => {
   showFavorites.value = !showFavorites.value
+  showRecommendations.value = false // 确保推荐视图关闭
   if (showFavorites.value) {
     // Filter materials to only show favorites
     const allMaterials = materials.value
     materials.value = allMaterials.filter(item => favoriteMaterials.value.has(item.id))
+  } else {
+    // Reload all materials
+    loadMaterials()
+  }
+}
+
+// Toggle recommendations view
+const toggleRecommendationsView = () => {
+  showRecommendations.value = !showRecommendations.value
+  showFavorites.value = false // 确保收藏视图关闭
+  if (showRecommendations.value) {
+    // 模拟个性化推荐（目前尚未实现真实的推荐算法）
+    ElMessage.info('个性化推荐功能正在开发中，敬请期待！')
+    // 暂时显示所有辅料
+    loadMaterials()
   } else {
     // Reload all materials
     loadMaterials()
@@ -1361,13 +1428,17 @@ const confirmAddMaterial = async () => {
       console.log('文件检查返回结果:', checkRes);
       
       if (checkRes.code === 200) {
-        if (checkRes.data) {
+        if (checkRes.data.exists) {
           ElMessage.warning('该图片已存在于辅料库中，无法重复添加')
           return
         }
       } else {
         throw new Error('文件检查失败: ' + checkRes.message)
       }
+      
+      // 获取文件哈希值
+      const fileHash = checkRes.data.fileHash
+      console.log('文件哈希值:', fileHash);
       
       // 准备所有要上传的文件
       console.log('准备所有要上传的文件');
@@ -1420,7 +1491,8 @@ const confirmAddMaterial = async () => {
         status: 2, // 设置为待审核状态，需要管理员审核
         imageUrl: fileUrl, // 添加主图片URL
         image: fileUrl, // 添加image字段，确保前端可以正常显示
-        images: JSON.stringify(fileUrls) // 添加所有图片URL，使用JSON格式
+        images: JSON.stringify(fileUrls), // 添加所有图片URL，使用JSON格式
+        fileHash: fileHash // 添加文件哈希值
       }
       
       // 直接调用API保存辅料信息
@@ -1514,25 +1586,47 @@ const loadMaterials = async () => {
           }
         }
         
+        // 如果imageUrl仍然是"上传成功"，尝试从images字段获取
+        if (imageUrl === '上传成功' && item.images) {
+          try {
+            // 处理可能的字符串包裹情况
+            let imagesStr = item.images
+            if (typeof imagesStr === 'string' && imagesStr.startsWith('"') && imagesStr.endsWith('"')) {
+              imagesStr = imagesStr.substring(1, imagesStr.length - 1)
+            }
+            
+            const images = JSON.parse(imagesStr)
+            if (Array.isArray(images) && images.length > 0) {
+              imageUrl = images[0] // 使用第一张图片作为主图
+            }
+          } catch (e) {
+            console.error('解析图片列表失败:', e, '原始数据:', item.images)
+          }
+        }
+        
         // 处理图片URL
         if (imageUrl && typeof imageUrl === 'string') {
           // 过滤掉错误的图片URL（如"上传成功"）
-          if (imageUrl === '上传成功' || imageUrl === '[]' || !imageUrl.startsWith('http')) {
+          if (imageUrl === '上传成功' || imageUrl === '[]') {
             imageUrl = null
-          } else {
+          } else if (imageUrl.startsWith('http')) {
             // 提取文件名（忽略bucket名称）
             const lastSlashIndex = imageUrl.lastIndexOf('/')
             if (lastSlashIndex !== -1) {
-              let filename = imageUrl.substring(lastSlashIndex + 1)
-              // 测试使用一个确实存在的文件
-              if (filename === 'fdab8f44-dbec-471c-9170-35e36703ab7e.jpg') {
-                filename = '6de6ffc4-0778-4179-b534-82b2722d3942.jpg'
-              }
+              const filename = imageUrl.substring(lastSlashIndex + 1)
               // 使用后端接口获取图片，避免MinIO认证问题
-              imageUrl = `/api/file/get-image?filename=${filename}`
+              imageUrl = `/file/get-image?filename=${filename}`
             }
+          } else if (!imageUrl.startsWith('/file/get-image')) {
+            // 如果不是http开头也不是/file/get-image格式，直接使用文件名
+            imageUrl = `/file/get-image?filename=${imageUrl}`
           }
+          // 保留已经是/file/get-image格式的URL
         }
+        
+        // 调试打印图片URL
+        console.log('辅料名称:', item.productName || item.material_name);
+        console.log('处理后的图片URL:', imageUrl);
         
         return {
           ...item,
@@ -1605,6 +1699,13 @@ const addMaterialRules = {
 
 const handleFileChange = async (file) => {
   console.log('开始处理文件上传:', file);
+  console.log('文件对象结构:', {
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    raw: file.raw,
+    hasRaw: !!file.raw
+  });
   isRecognizing.value = true
   recognitionResult.value = null
   recognitionProgress.value = 0
@@ -1641,6 +1742,7 @@ const handleFileChange = async (file) => {
       }
     }, 200)
     
+    console.log('准备调用recognizeMaterial函数');
     const res = await recognizeMaterial(file)
     clearInterval(progressInterval)
     updateProgress(100)
@@ -1919,6 +2021,58 @@ const handleMoreImagesFileRemove = (file, fileList) => {
   moreImagesFiles.value = fileList
 }
 
+// 处理单个图片URL的函数
+const processImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return null
+  
+  // 过滤掉错误的图片URL（如"上传成功"）
+  if (url === '上传成功' || url === '[]') {
+    return null
+  } else if (url.startsWith('http')) {
+    // 提取文件名（忽略bucket名称）
+    const lastSlashIndex = url.lastIndexOf('/')
+    if (lastSlashIndex !== -1) {
+      const filename = url.substring(lastSlashIndex + 1)
+      // 使用后端接口获取图片，避免MinIO认证问题
+      return `/file/get-image?filename=${filename}`
+    }
+  } else if (!url.startsWith('/file/get-image')) {
+    // 如果不是http开头也不是/file/get-image格式，直接使用文件名
+    return `/file/get-image?filename=${url}`
+  }
+  // 保留已经是/file/get-image格式的URL
+  return url
+}
+
+// 获取处理后的单个图片URL
+const getProcessedImageUrl = (material) => {
+  if (!material) return ''
+  
+  // 优先使用处理后的image字段
+  if (material.image) {
+    return processImageUrl(material.image) || ''
+  }
+  
+  // 处理imageUrl字段
+  if (material.imageUrl) {
+    return processImageUrl(material.imageUrl) || ''
+  }
+  
+  // 处理images字段
+  if (material.images) {
+    try {
+      const parsedImages = JSON.parse(material.images)
+      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+        return processImageUrl(parsedImages[0]) || ''
+      }
+    } catch (e) {
+      console.error('解析图片列表失败:', e)
+    }
+  }
+  
+  return ''
+}
+
 // 获取图片预览列表
 const getImagePreviewList = (material) => {
   if (!material) return []
@@ -1927,7 +2081,10 @@ const getImagePreviewList = (material) => {
   
   // 优先使用image字段
   if (material.image) {
-    images.push(material.image)
+    const processedUrl = processImageUrl(material.image)
+    if (processedUrl) {
+      images.push(processedUrl)
+    }
   }
   
   // 如果有images字段，解析并合并
@@ -1935,17 +2092,29 @@ const getImagePreviewList = (material) => {
     try {
       const parsedImages = JSON.parse(material.images)
       if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+        // 处理每个图片URL
+        const processedImages = parsedImages.map(url => processImageUrl(url)).filter(Boolean)
+        
         // 如果image字段不在images中，添加到列表开头
-        if (material.image && !parsedImages.includes(material.image)) {
-          images = [material.image, ...parsedImages]
+        if (material.image) {
+          const processedImageUrl = processImageUrl(material.image)
+          if (processedImageUrl && !processedImages.includes(processedImageUrl)) {
+            images = [processedImageUrl, ...processedImages]
+          } else {
+            images = processedImages
+          }
         } else {
-          images = parsedImages
+          images = processedImages
         }
       }
     } catch (e) {
       console.error('解析图片列表失败:', e)
     }
   }
+  
+  // 调试打印处理后的图片URL
+  console.log('辅料名称:', material.productName || material.material_name);
+  console.log('处理后的图片预览列表:', images);
   
   return images
 }
@@ -2020,32 +2189,27 @@ const refreshSimilarMaterials = (item) => {
   ElMessage.success('相似辅料推荐已刷新')
 }
 
-const loadSimilarMaterials = (item) => {
-  // Mock similar materials based on feature vectors
-  // In a real app, this would call an API like /api/materials/similar?productId=...
-  similarMaterials.value = [
-    {
-      id: item.id + 10,
-      productName: item.productName + ' (相似款1)',
-      price: item.price + Math.random() * 10 - 5,
-      image: item.image || 'https://via.placeholder.com/150',
-      similarity: 0.92 - Math.random() * 0.1
-    },
-    {
-      id: item.id + 11,
-      productName: item.productName + ' (相似款2)',
-      price: item.price + Math.random() * 10 - 5,
-      image: item.image || 'https://via.placeholder.com/150',
-      similarity: 0.85 - Math.random() * 0.1
-    },
-    {
-      id: item.id + 12,
-      productName: item.productName + ' (相似款3)',
-      price: item.price + Math.random() * 10 - 5,
-      image: item.image || 'https://via.placeholder.com/150',
-      similarity: 0.80 - Math.random() * 0.1
+const loadSimilarMaterials = async (item) => {
+  try {
+    const res = await recommendProducts(item.id)
+    if (res.code === 200 && res.data) {
+      // Map backend products to frontend format and add mock similarity if missing
+      similarMaterials.value = res.data.map((prod, index) => {
+        // Process image URL using the same logic as main materials
+        const processedMaterial = {
+          ...prod,
+          image: getProcessedImageUrl(prod), // Use the same image processing logic
+          similarity: prod.similarity || (0.95 - index * 0.05).toFixed(2) // Mock similarity if not provided
+        }
+        return processedMaterial
+      })
+    } else {
+      similarMaterials.value = []
     }
-  ]
+  } catch (error) {
+    console.error('Failed to load similar materials:', error)
+    similarMaterials.value = []
+  }
 }
 
 // 添加到项目方案

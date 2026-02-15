@@ -38,6 +38,13 @@ export const deleteProduct = (id) => {
   })
 }
 
+export const recommendProducts = (id) => {
+  return request({
+    url: `/product/recommend/${id}`,
+    method: 'get'
+  })
+}
+
 
 
 

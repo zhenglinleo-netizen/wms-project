@@ -98,7 +98,19 @@
           </template>
           <div class="hot-materials">
             <div v-for="item in hotMaterials" :key="item.id" class="material-item">
-              <el-image :src="item.image" fit="cover" class="material-img" />
+              <el-image 
+                :src="item.image || ''" 
+                fit="cover" 
+                class="material-img"
+                :alt="item.name"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon class="image-icon"><Picture /></el-icon>
+                    <div class="image-text">无图片</div>
+                  </div>
+                </template>
+              </el-image>
               <div class="material-info">
                 <div class="material-name">{{ item.name }}</div>
                 <div class="material-price">¥{{ item.price }}</div>
@@ -240,7 +252,7 @@ import { getProductList } from '@/api/product'
 import { getInventoryList } from '@/api/inventory'
 import { getProjectList } from '@/api/project'
 import { getRequirementList } from '@/api/requirement'
-import { List, Warning, Document, Money, Clock } from '@element-plus/icons-vue'
+import { List, Warning, Document, Money, Clock, Picture } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -551,6 +563,30 @@ onMounted(async () => {
   height: 60px;
   margin-right: 10px;
   border-radius: 4px;
+}
+
+.image-error {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.image-icon {
+  font-size: 20px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.image-text {
+  font-size: 10px;
+  color: #909399;
+  text-align: center;
+  padding: 0 4px;
 }
 .material-name {
   font-weight: bold;

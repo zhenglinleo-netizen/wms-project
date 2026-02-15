@@ -67,7 +67,7 @@
       </el-table>
     </el-card>
     
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" append-to-body>
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="辅料编码" prop="productCode">
           <el-input v-model="form.productCode" :disabled="isEdit" />        </el-form-item>
