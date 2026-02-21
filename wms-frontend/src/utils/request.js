@@ -19,7 +19,8 @@ service.interceptors.request.use(
       url: config.url,
       method: config.method,
       timeout: config.timeout,
-      headers: config.headers
+      headers: config.headers,
+      data: config.data
     });
     return config
   },

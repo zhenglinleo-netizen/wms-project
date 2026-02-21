@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public Result<Object> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
         e.printStackTrace();
-        return Result.error("JSON解析错误，请检查请求格式");
+        return Result.error(400, "JSON解析错误，请检查请求格式");
     }
     
     /**

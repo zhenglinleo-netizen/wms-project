@@ -15,6 +15,8 @@ public class Product {
     private String productName;
     private String category;
     private String type;
+    private String material;
+    private String color;
     private String style;
     private String specification;
     private String unit;
@@ -25,6 +27,7 @@ public class Product {
     private String fileHash;
     private String imageUrl;
     private String images;
+    private Float similarity;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

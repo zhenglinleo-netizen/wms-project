@@ -1,10 +1,9 @@
 import request from '@/utils/request'
-
-// 创建一个专门用于AI识别的axios实例，设置更长的超时时间
 import axios from 'axios'
 
-const aiRequest = axios.create({
-  baseURL: '',
+// 创建一个专门用于AI识别的axios实例，设置更长的超时时间
+export const aiRequest = axios.create({
+  baseURL: '/api',
   timeout: 60000, // 60秒超时
 })
 
@@ -68,12 +67,12 @@ export const recognizeMaterial = async (file) => {
     console.log('FormData中文件字段:', formData.has('file'));
     
     console.log('准备发送请求到后端API...');
-    console.log('请求URL:', '/api/ai/recognize');
+    console.log('请求URL:', '/ai/recognize');
     console.log('请求方法:', 'post');
     
     // 使用专门的aiRequest实例
     const response = await aiRequest({
-      url: '/api/ai/recognize',
+      url: '/ai/recognize',
       method: 'post',
       data: formData
     });

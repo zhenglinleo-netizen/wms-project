@@ -147,6 +147,318 @@
           <router-view />
         </transition>
       </el-main>
+      
+      <!-- 辅料详情对话框 -->
+      <el-dialog
+        v-model="materialStore.detailDialogVisible"
+        :title="materialStore.currentMaterial?.productName || '辅料详情'"
+        :width="'55%'"
+        :max-width="'1000px'"
+        :close-on-click-modal="true"
+        :close-on-press-escape="true"
+        @close="materialStore.hideDetail()"
+      >
+        <el-scrollbar height="75vh" wrap-style="overflow-x: hidden;" v-if="materialStore.currentMaterial">
+          <!-- 主要信息区域 -->
+          <div style="margin-bottom: 20px;">
+            <!-- 图片区域 -->
+            <div style="margin-bottom: 15px;">
+              <el-image 
+                v-if="materialStore.currentMaterial.image || materialStore.currentMaterial.imageUrl || materialStore.currentMaterial.images"
+                :src="getProcessedImageUrl(materialStore.currentMaterial)"
+                loading="lazy"
+                fit="contain" 
+                style="width: 100%; max-height: 400px; border-radius: 8px; background-color: #f5f7fa;"
+                preview-teleported
+                :preview-src-list="getImagePreviewList(materialStore.currentMaterial)"
+              >
+                <template #error>
+                  <div style="width: 100%; height: 400px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px;">
+                    <el-empty description="图片加载失败" :image-size="80" />
+                  </div>
+                </template>
+              </el-image>
+              <el-empty v-else description="暂无图片" :image-size="80" />
+            </div>
+            
+            <!-- 基本信息区域 -->
+            <div style="margin-bottom: 15px;">
+              <!-- 标题和编码 -->
+              <div style="margin-bottom: 15px;">
+                <el-space direction="vertical" size="small" style="width: 100%;">
+                  <el-text :type="'primary'" :size="'large'" :strong="true">
+                    {{ materialStore.currentMaterial.productName }}
+                  </el-text>
+                  <el-text :type="'info'" size="small">
+                    编码: {{ materialStore.currentMaterial.productCode }}
+                  </el-text>
+                </el-space>
+              </div>
+              
+              <!-- 快速信息标签 -->
+              <div style="margin-bottom: 15px;">
+                <el-space wrap>
+                  <el-tag>{{ materialStore.currentMaterial.category }}</el-tag>
+                  <el-tag v-if="materialStore.currentMaterial.specification">{{ materialStore.currentMaterial.specification }}</el-tag>
+                  <el-tag v-if="materialStore.currentMaterial.unit">{{ materialStore.currentMaterial.unit }}</el-tag>
+                  <el-tag 
+                    :type="materialStore.currentMaterial.stock <= 0 ? 'danger' : materialStore.currentMaterial.stock < 100 ? 'warning' : 'success'"
+                  >
+                    {{ materialStore.currentMaterial.stock || 0 }} {{ materialStore.currentMaterial.unit }}
+                  </el-tag>
+                </el-space>
+              </div>
+              
+              <!-- 详细信息 -->
+              <el-descriptions :column="2" :size="'small'" border>
+                <el-descriptions-item label="分类">{{ materialStore.currentMaterial.category }}</el-descriptions-item>
+                <el-descriptions-item label="规格">{{ materialStore.currentMaterial.specification || '未设置' }}</el-descriptions-item>
+                <el-descriptions-item label="单位">{{ materialStore.currentMaterial.unit }}</el-descriptions-item>
+                <el-descriptions-item label="单价">
+                  <el-text type="danger" :strong="true" style="font-size: 16px;">¥{{ materialStore.currentMaterial.price }}</el-text>
+                </el-descriptions-item>
+                <el-descriptions-item label="库存">
+                  <el-tag :type="materialStore.currentMaterial.stock <= 0 ? 'danger' : materialStore.currentMaterial.stock < 100 ? 'warning' : 'success'">
+                    {{ materialStore.currentMaterial.stock || 0 }} {{ materialStore.currentMaterial.unit }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="供应商">{{ materialStore.currentMaterial.supplier || '未指定' }}</el-descriptions-item>
+                <el-descriptions-item label="预计货期">{{ materialStore.currentMaterial.expectedDeliveryDays || 0 }} 天</el-descriptions-item>
+                <el-descriptions-item label="更新时间">{{ materialStore.currentMaterial.updatedAt || '未知' }}</el-descriptions-item>
+              </el-descriptions>
+              
+              <!-- 详细描述 -->
+              <div style="margin-top: 15px;">
+                <el-collapse v-model="detailCollapseActive">
+                  <el-collapse-item title="详细描述" name="description">
+                    <el-text>
+                      {{ materialStore.currentMaterial.description || '无描述' }}
+                    </el-text>
+                  </el-collapse-item>
+                </el-collapse>
+              </div>
+              
+              <!-- 操作按钮 -->
+              <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+                <el-button 
+                  type="success" 
+                  :icon="Upload"
+                  size="small"
+                  @click="openUploadMoreImagesDialog"
+                  title="上传更多图片"
+                >
+                  上传更多图片
+                </el-button>
+                <el-button 
+                  :type="isFavorited(materialStore.currentMaterial.id) ? 'warning' : 'default'" 
+                  :icon="Star"
+                  size="small"
+                  @click="toggleFavorite(materialStore.currentMaterial.id)"
+                  :title="isFavorited(materialStore.currentMaterial.id) ? '取消收藏' : '添加收藏'"
+                >
+                  {{ isFavorited(materialStore.currentMaterial.id) ? '已收藏' : '收藏' }}
+                </el-button>
+                <el-button 
+                  type="info" 
+                  :icon="Share"
+                  size="small"
+                  @click="shareMaterial(materialStore.currentMaterial)"
+                >
+                  分享
+                </el-button>
+                <el-button 
+                  type="warning" 
+                  :icon="DataAnalysis"
+                  size="small"
+                  @click="compareMaterials(materialStore.currentMaterial)"
+                >
+                  对比
+                </el-button>
+                <el-button 
+                  type="primary" 
+                  :icon="ShoppingCart"
+                  size="small"
+                  @click="openProjectSchemeDialog(materialStore.currentMaterial)"
+                >
+                  加入项目方案
+                </el-button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 相似辅料推荐 -->
+          <div style="margin-bottom: 20px;">
+            <el-space justify="space-between" style="width: 100%; margin-bottom: 10px;">
+              <el-text type="primary" size="large">相似辅料推荐</el-text>
+              <el-button size="small" @click="refreshSimilarMaterials(materialStore.currentMaterial)">
+                刷新推荐
+              </el-button>
+            </el-space>
+            
+            <el-row v-if="materialStore.similarMaterials.length > 0" :gutter="10">
+              <el-col v-for="item in materialStore.similarMaterials" :key="item.id" :span="12">
+                <el-card 
+                  shadow="hover" 
+                  :body-style="{ padding: '10px' }"
+                  @click="showDetail(item, false)"
+                  style="cursor: pointer;"
+                >
+                  <el-image 
+                    v-if="getProcessedImageUrl(item)"
+                    v-lazy="getProcessedImageUrl(item)"
+                    fit="cover"
+                    style="width: 100%; height: 80px; border-radius: 4px; margin-bottom: 8px;"
+                    @click.stop
+                  >
+                    <template #error>
+                      <div style="width: 100%; height: 80px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 4px;">
+                        <el-empty description="暂无图片" :image-size="40" />
+                      </div>
+                    </template>
+                  </el-image>
+                  <el-empty v-else description="暂无图片" :image-size="40" style="margin-bottom: 8px;" />
+                  <el-text :truncate="{ rows: 1 }" :strong="true" style="display: block; margin-bottom: 6px; font-size: 13px;">
+                    {{ item.productName }}
+                  </el-text>
+                  <el-progress 
+                    :percentage="item.similarity * 100" 
+                    :format="() => `${(item.similarity * 100).toFixed(0)}%`" 
+                    :size="'small'" 
+                    style="margin-bottom: 6px;"
+                  />
+                  <el-text type="danger" :strong="true" style="font-size: 14px;">
+                    ¥{{ item.price.toFixed(2) }}
+                  </el-text>
+                  <div style="margin-top: 8px; display: flex; justify-content: flex-end; gap: 6px;">
+                    <el-button 
+                      size="small" 
+                      type="primary" 
+                      circle 
+                      :icon="ShoppingCart"
+                      @click.stop="openProjectSchemeDialog(item)"
+                      title="加入项目"
+                    />
+                    <el-button 
+                      size="small" 
+                      circle 
+                      :icon="Star"
+                      :type="isFavorited(item.id) ? 'warning' : ''"
+                      @click.stop="toggleFavorite(item.id)"
+                      title="收藏"
+                    />
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+            <el-empty v-else description="暂无相似辅料数据" :image-size="60" />
+          </div>
+          
+          <!-- 推荐辅料 -->
+          <div>
+            <el-text type="primary" size="large" style="display: block; margin-bottom: 10px;">你可能需要</el-text>
+            
+            <el-row v-if="materialStore.recommendations.length > 0" :gutter="10">
+              <el-col v-for="rec in materialStore.recommendations" :key="rec.id" :span="12">
+                <el-card 
+                  shadow="hover" 
+                  :body-style="{ padding: '10px' }"
+                >
+                  <el-image 
+                    v-if="rec.image"
+                    v-lazy="rec.image"
+                    fit="cover"
+                    style="width: 100%; height: 80px; border-radius: 4px; margin-bottom: 8px;"
+                  />
+                  <el-empty v-else description="暂无图片" :image-size="40" style="margin-bottom: 8px;" />
+                  <el-text :truncate="{ rows: 1 }" :strong="true" style="display: block; margin-bottom: 6px; font-size: 13px;">
+                    {{ rec.productName }}
+                  </el-text>
+                  <el-tag size="small" type="success" style="margin-bottom: 6px;">{{ rec.reason }}</el-tag>
+                  <el-text type="danger" :strong="true" style="font-size: 14px;">
+                    ¥{{ rec.price.toFixed(2) }}
+                  </el-text>
+                  <div style="margin-top: 8px; display: flex; justify-content: flex-end; gap: 6px;">
+                    <el-button 
+                      size="small" 
+                      type="primary" 
+                      circle 
+                      :icon="ShoppingCart"
+                      @click="openProjectSchemeDialog(rec)"
+                      title="加入项目"
+                    />
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+            <el-empty v-else description="暂无推荐数据" :image-size="60" />
+          </div>
+        </el-scrollbar>
+      </el-dialog>
+      
+      <!-- 上传更多图片对话框 -->
+      <el-dialog v-model="uploadMoreImagesDialog" title="上传更多图片" width="500px" append-to-body>
+        <div style="padding: 20px 0;">
+          <el-upload
+            drag
+            action="#"
+            :auto-upload="false"
+            :on-change="handleMoreImagesFileChange"
+            :on-remove="handleMoreImagesFileRemove"
+            :file-list="moreImagesFiles"
+            list-type="picture"
+            multiple
+            :limit="5"
+            :disabled="isUploadingMoreImages"
+          >
+            <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+            <div class="el-upload__text">
+              拖拽图片到此处或 <em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 JPG、PNG、BMP 格式，文件大小不超过 10MB，最多上传 5 张图片
+              </div>
+            </template>
+          </el-upload>
+        </div>
+        
+        <template #footer>
+          <el-button @click="uploadMoreImagesDialog = false">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="handleMoreImagesUpload"
+            :loading="isUploadingMoreImages"
+          >
+            确定上传
+          </el-button>
+        </template>
+      </el-dialog>
+      
+      <!-- 选择项目方案对话框 -->
+      <el-dialog v-model="projectSchemeDialogVisible" title="选择项目方案" width="500px" append-to-body>
+        <el-form :model="{}" label-width="80px">
+          <el-form-item label="选择项目" required>
+            <el-select v-model="selectedProject" placeholder="请选择项目" style="width: 100%" @change="handleProjectChange">
+              <el-option v-for="project in projectList" :key="project.id" :label="project.projectName" :value="project" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="选择方案" required>
+            <el-select v-model="selectedScheme" placeholder="请选择方案" style="width: 100%" :disabled="!selectedProject">
+              <el-option 
+                v-for="scheme in selectedProject?.schemes || []" 
+                :key="scheme.id" 
+                :label="`${scheme.schemeName} (${scheme.status})`" 
+                :value="scheme.id" 
+                :disabled="scheme.status === '已确定'"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="projectSchemeDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="addToProject">确定添加</el-button>
+        </template>
+      </el-dialog>
     </el-container>
   </el-container>
 </template>
@@ -155,13 +467,39 @@
 import { computed, ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useMaterialStore } from '@/stores/material'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { changePassword } from '@/api/user'
-import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting } from '@element-plus/icons-vue'
+import { getMaterialList, recognizeMaterial, searchByImage } from '@/api/material'
+import { saveProduct, updateProduct, recommendProducts } from '@/api/product'
+import { getProjectList, addMaterialToScheme } from '@/api/project'
+import { getInventoryList } from '@/api/inventory'
+import { uploadFile, deleteFile, checkFileExists, uploadMultipleFiles } from '@/api/file'
+import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis } from '@element-plus/icons-vue'
+import { processImageUrl, getProcessedImageUrl, getImagePreviewList } from '@/utils/imageProcessor'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const materialStore = useMaterialStore()
+
+// 辅料详情折叠面板状态
+const detailCollapseActive = ref(['description'])
+
+// 收藏功能
+const favoriteMaterials = ref(new Set())
+
+// 上传更多图片对话框
+const uploadMoreImagesDialog = ref(false)
+const moreImagesFiles = ref([])
+const isUploadingMoreImages = ref(false)
+
+// 项目方案对话框
+const projectSchemeDialogVisible = ref(false)
+const selectedProject = ref(null)
+const selectedScheme = ref(null)
+const projectList = ref([])
+const currentMaterialForProject = ref(null)
 
 const activeMenu = computed(() => route.path)
 
@@ -431,7 +769,267 @@ onMounted(() => {
   router.afterEach(() => {
     // 路由变化时可以执行一些操作
   })
+  
+  // 加载收藏数据
+  loadFavorites()
 })
+
+// 加载收藏数据
+const loadFavorites = () => {
+  const savedFavorites = localStorage.getItem('materialFavorites')
+  if (savedFavorites) {
+    favoriteMaterials.value = new Set(JSON.parse(savedFavorites))
+  }
+}
+
+// 检查是否收藏
+const isFavorited = (materialId) => {
+  return favoriteMaterials.value.has(materialId)
+}
+
+// 切换收藏状态
+const toggleFavorite = (materialId) => {
+  if (favoriteMaterials.value.has(materialId)) {
+    favoriteMaterials.value.delete(materialId)
+    ElMessage.success('已取消收藏')
+  } else {
+    favoriteMaterials.value.add(materialId)
+    ElMessage.success('已添加到收藏')
+  }
+  
+  // 保存到localStorage
+  localStorage.setItem('materialFavorites', JSON.stringify([...favoriteMaterials.value]))
+}
+
+
+
+// 加载推荐辅料
+const loadRecommendations = (item) => {
+  // Mock collaborative filtering recommendations
+  // In a real app, this would call an API like /api/recommendations?productId=...
+  const recommendations = [
+    {
+      id: 101,
+      productName: '推荐搭配：' + (item.category === '面料' ? '同色系纽扣' : '配套里布'),
+      price: 15.5,
+      image: '',
+      reason: '95%的用户同时也购买了此商品'
+    },
+    {
+      id: 102,
+      productName: '推荐搭配：' + (item.category === '面料' ? '缝纫线' : '粘合衬'),
+      price: 5.0,
+      image: '',
+      reason: '经常一起使用的辅料'
+    }
+  ]
+  materialStore.setRecommendations(recommendations)
+}
+
+// 加载相似辅料
+const loadSimilarMaterials = async (item) => {
+  try {
+    const res = await recommendProducts(item.id)
+    
+    if (res.code === 200 && res.data) {
+      // Map backend products to frontend format
+      const similarMaterials = res.data.map((prod) => {
+        // Process image URL using the same logic as main materials
+        const processedImage = getProcessedImageUrl(prod)
+        
+        const processedMaterial = {
+          ...prod,
+          image: processedImage, // Use the same image processing logic
+          similarity: prod.similarity // Use real similarity score from backend
+        }
+        
+        return processedMaterial
+      })
+      
+      materialStore.setSimilarMaterials(similarMaterials)
+    } else {
+      materialStore.setSimilarMaterials([])
+    }
+  } catch (error) {
+    console.error('加载相似辅料失败:', error)
+    materialStore.setSimilarMaterials([])
+  }
+}
+
+// 刷新相似辅料推荐
+const refreshSimilarMaterials = (item) => {
+  loadSimilarMaterials(item)
+  ElMessage.success('相似辅料推荐已刷新')
+}
+
+// 显示辅料详情
+const showDetail = async (item, reloadRecommendations = true) => {
+  // 获取真实库存数据
+  try {
+    const inventoryRes = await getInventoryList()
+    const inventoryData = inventoryRes.data || []
+    const inventoryMap = new Map()
+    
+    inventoryData.forEach(inv => {
+      // 使用产品编码或物料编码作为键，确保能正确匹配
+      const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
+      if (productCode) {
+        inventoryMap.set(productCode, inv)
+      }
+    })
+    
+    // 更新当前物料的库存数据
+    const inventory = inventoryMap.get(item.productCode)
+    if (inventory) {
+      item.stock = inventory.quantity || 0
+    } else {
+      item.stock = 0
+    }
+  } catch (error) {
+    console.error('获取库存数据失败:', error)
+    // 如果获取失败，使用默认值0
+    item.stock = 0
+  }
+  
+  if (reloadRecommendations) {
+    loadRecommendations(item)
+    loadSimilarMaterials(item)
+  }
+  
+  // 显示对话框
+  materialStore.showDetail(item)
+}
+
+// 分享辅料
+const shareMaterial = (material) => {
+  if (navigator.share) {
+    navigator.share({
+      title: material.productName,
+      text: `查看辅料: ${material.productName} - ¥${material.price}`,
+      url: window.location.origin + '/#/material-library'
+    })
+  } else {
+    // Fallback for browsers that don't support Web Share API
+    const shareText = `查看辅料: ${material.productName} - ¥${material.price}\n编码: ${material.productCode}\n链接: ${window.location.origin + '/#/material-library'}`
+    navigator.clipboard.writeText(shareText)
+      .then(() => {
+        ElMessage.success('分享信息已复制到剪贴板')
+      })
+      .catch(() => {
+        ElMessage.error('复制失败，请手动分享')
+      })
+  }
+}
+
+// 对比辅料
+const compareMaterials = (material) => {
+  ElMessage.info('材料对比功能开发中...')
+}
+
+// 打开上传更多图片对话框
+const openUploadMoreImagesDialog = () => {
+  moreImagesFiles.value = []
+  uploadMoreImagesDialog.value = true
+}
+
+// 处理更多图片文件变化
+const handleMoreImagesFileChange = (file, fileList) => {
+  moreImagesFiles.value = fileList
+}
+
+// 处理更多图片文件移除
+const handleMoreImagesFileRemove = (file, fileList) => {
+  moreImagesFiles.value = fileList
+}
+
+// 处理更多图片上传
+const handleMoreImagesUpload = async () => {
+  if (moreImagesFiles.value.length === 0) {
+    ElMessage.warning('请先选择要上传的图片')
+    return
+  }
+  
+  isUploadingMoreImages.value = true
+  
+  try {
+    // 上传多张图片
+    const uploadedFiles = await uploadMultipleFiles(moreImagesFiles.value)
+    
+    // 处理上传结果
+    if (uploadedFiles && uploadedFiles.length > 0) {
+      ElMessage.success(`成功上传 ${uploadedFiles.length} 张图片`)
+      
+      // 可选：更新当前物料的图片信息
+      if (materialStore.currentMaterial) {
+        // 这里可以根据实际需求更新物料的图片信息
+        // 例如：materialStore.currentMaterial.images = [...]
+      }
+      
+      // 关闭对话框
+      uploadMoreImagesDialog.value = false
+    } else {
+      ElMessage.error('图片上传失败，请重试')
+    }
+  } catch (error) {
+    console.error('上传图片失败:', error)
+    ElMessage.error('上传图片失败: ' + (error.message || '未知错误'))
+  } finally {
+    isUploadingMoreImages.value = false
+  }
+}
+
+// 加载项目列表
+const loadProjects = async () => {
+  try {
+    // 获取当前登录用户ID
+    const userId = userStore.user?.id || 1
+    const res = await getProjectList({ userId })
+    if (res.code === 200) {
+      projectList.value = res.data
+    }
+  } catch (error) {
+    ElMessage.error('加载项目列表失败')
+  }
+}
+
+// 打开选择项目方案对话框
+const openProjectSchemeDialog = (item) => {
+  currentMaterialForProject.value = item
+  loadProjects()
+  projectSchemeDialogVisible.value = true
+}
+
+// 处理项目选择变化
+const handleProjectChange = () => {
+  selectedScheme.value = null
+}
+
+// 添加辅料到项目方案
+const addToProject = async () => {
+  if (!selectedProject.value || !selectedScheme.value || !currentMaterialForProject.value) {
+    ElMessage.warning('请选择项目和方案')
+    return
+  }
+  
+  try {
+    const result = await addMaterialToScheme({
+      projectId: selectedProject.value.id,
+      schemeId: selectedScheme.value,
+      materialId: currentMaterialForProject.value.id
+    })
+    
+    if (result.code === 200) {
+      ElMessage.success('添加成功')
+      projectSchemeDialogVisible.value = false
+      // 可选：刷新项目方案列表
+    } else {
+      ElMessage.error(result.message || '添加失败')
+    }
+  } catch (error) {
+    console.error('添加辅料到项目方案失败:', error)
+    ElMessage.error('添加失败: ' + (error.message || '未知错误'))
+  }
+}
 </script>
 
 <style scoped>

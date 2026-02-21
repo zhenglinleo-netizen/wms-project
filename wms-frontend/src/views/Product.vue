@@ -59,9 +59,9 @@
         <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.status !== 1" type="success" size="small" @click="handleStatusChange(row, 1)">上架</el-button>
-            <el-button v-if="row.status !== 0" type="warning" size="small" @click="handleStatusChange(row, 0)">下架</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="success" size="small" @click="handleStatusChange(row, 1)" :disabled="row.status === 1">上架</el-button>
+            <el-button type="warning" size="small" @click="handleStatusChange(row, 0)" :disabled="row.status === 0">下架</el-button>
+            <el-button type="danger" size="small" @click="handleDelete(row)" :disabled="row.status !== 0">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -113,6 +113,9 @@
         <el-form-item label="单价" prop="price">
           <el-input-number v-model="form.price" :precision="2" :min="0" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="预期货期" prop="expectedDeliveryDays">
+          <el-input-number v-model="form.expectedDeliveryDays" :min="0" :max="999" style="width: 100%" placeholder="请输入预期货期（天）" />
+        </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" :rows="3" />
         </el-form-item>
@@ -154,6 +157,7 @@ const form = reactive({
   specification: '',
   unit: '件',
   price: 0,
+  expectedDeliveryDays: null,
   description: '',
   status: 1
 })
@@ -162,7 +166,8 @@ const rules = {
   productCode: [{ required: true, message: '请输入辅料编码', trigger: 'blur' }],
   productName: [{ required: true, message: '请输入辅料名称', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  price: [{ required: true, message: '请输入单价', trigger: 'blur' }]
+  price: [{ required: true, message: '请输入单价', trigger: 'blur' }],
+  expectedDeliveryDays: [{ required: true, message: '请输入预期货期', trigger: 'blur' }, { type: 'number', min: 0, message: '预期货期必须大于等于0', trigger: 'blur' }]
 }
 
 const categoryList = ref([])
@@ -248,7 +253,13 @@ const handleAdd = () => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要删除该商品吗？', '提示', {
+    // 检查状态，只有下架状态才能删除
+    if (row.status !== 0) {
+      ElMessage.warning('只有下架状态的辅料才能删除')
+      return
+    }
+    
+    await ElMessageBox.confirm('确定要删除该辅料吗？', '提示', {
       type: 'warning'
     })
     await deleteProduct(row.id)

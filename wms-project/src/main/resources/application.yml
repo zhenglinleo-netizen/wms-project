@@ -91,3 +91,11 @@ zhipu:
   api-url: https://open.bigmodel.cn/api/paas/v4/chat/completions
   model: GLM-4.1V-Thinking-Flash
   timeout: 30000
+
+# 千问多模态向量化API配置
+dashscope:
+  api-key: sk-1ff3882cf4ba4218a9d12787fd763f40
+  api-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding
+  model: qwen3-vl-embedding
+  timeout: 30000
+  vector-dimension: 2048
