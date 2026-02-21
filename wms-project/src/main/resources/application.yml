@@ -87,10 +87,11 @@ milvus:
 
 # 智谱大模型API配置
 zhipu:
-  api-key: b381e7b66c5e4f809c02020509e53430.sx3jxMp45RMmZpE0
+  api-key: user's API key
   api-url: https://open.bigmodel.cn/api/paas/v4/chat/completions
   model: GLM-4.1V-Thinking-Flash
   timeout: 30000
+<<<<<<< HEAD
 
 # 千问多模态向量化API配置
 dashscope:
@@ -99,3 +100,5 @@ dashscope:
   model: qwen3-vl-embedding
   timeout: 30000
   vector-dimension: 2048
+=======
+>>>>>>> f2f2f55624868205ae4a6145eb3441209c28f28a
