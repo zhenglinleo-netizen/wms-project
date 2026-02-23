@@ -95,7 +95,7 @@ zhipu:
 
 # 千问多模态向量化API配置
 dashscope:
-  api-key: sk-1ff3882cf4ba4218a9d12787fd763f40
+  api-key: user's API key
   api-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding
   model: qwen3-vl-embedding
   timeout: 30000
