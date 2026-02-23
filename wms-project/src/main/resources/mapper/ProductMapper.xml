@@ -91,6 +91,7 @@
           m.update_time
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
+        WHERE m.status != -1
         ORDER BY m.create_time DESC
     </select>
 
@@ -116,6 +117,7 @@
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         <where>
+            m.status != -1
             <if test="productCode != null and productCode != ''">
                 AND m.material_code LIKE CONCAT('%', #{productCode}, '%')
             </if>
@@ -200,6 +202,31 @@
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         WHERE m.file_hash = #{fileHash}
+    </select>
+
+    <select id="selectDeleted" resultMap="BaseResultMap">
+        SELECT 
+          m.id,
+          m.material_code AS product_code,
+          m.material_name AS product_name,
+          mc.category_name AS category,
+          m.type,
+          m.style,
+          m.specification,
+          m.unit,
+          m.price,
+          m.expected_delivery_days,
+          m.description,
+          m.status,
+          m.file_hash,
+          m.image_url,
+          m.images,
+          m.create_time,
+          m.update_time
+        FROM material m
+        LEFT JOIN material_category mc ON m.category_id = mc.id
+        WHERE m.status = -1
+        ORDER BY m.update_time DESC
     </select>
 </mapper>
 

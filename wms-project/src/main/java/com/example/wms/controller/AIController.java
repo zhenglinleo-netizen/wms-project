@@ -59,6 +59,8 @@ public class AIController {
     @PostMapping("/vectorize")
     public Result<String> vectorizeAndStore(@RequestParam("productId") Long productId, @RequestParam("file") MultipartFile file) {
         try {
+            log.info("=== 向量化流程开始 ===");
+            
             if (productId == null) {
                 log.error("向量化请求失败: 辅料ID不能为空");
                 return Result.error("辅料ID不能为空");
@@ -68,17 +70,29 @@ public class AIController {
                 return Result.error("文件不能为空");
             }
 
-            log.info("收到向量化请求，辅料ID: {}, 文件名: {}, 文件大小: {}字节", productId, file.getOriginalFilename(), file.getSize());
+            log.info("收到向量化请求");
+            log.info("辅料ID: {}", productId);
+            log.info("文件名: {}", file.getOriginalFilename());
+            log.info("文件大小: {} 字节", file.getSize());
+            log.info("文件类型: {}", file.getContentType());
 
             // 1. 获取辅料信息
+            log.info("开始获取辅料信息...");
             Product product = productService.getProductById(productId);
             if (product == null) {
                 log.error("向量化请求失败: 辅料不存在，ID: {}", productId);
                 return Result.error("辅料不存在");
             }
-            log.info("获取辅料信息成功，辅料名称: {}", product.getProductName());
+            log.info("获取辅料信息成功");
+            log.info("辅料名称: {}", product.getProductName());
+            log.info("辅料分类: {}", product.getCategory());
+            log.info("辅料类型: {}", product.getType());
+            log.info("辅料材质: {}", product.getMaterial());
+            log.info("辅料颜色: {}", product.getColor());
+            log.info("辅料描述: {}", product.getDescription());
 
             // 2. 构建辅料信息Map
+            log.info("开始构建辅料信息Map...");
             Map<String, Object> materialInfo = new HashMap<>();
             materialInfo.put("auxiliaryName", product.getProductName());
             materialInfo.put("category", product.getCategory());
@@ -87,25 +101,48 @@ public class AIController {
             materialInfo.put("color", product.getColor());
             materialInfo.put("description", product.getDescription());
             log.info("构建辅料信息Map成功");
+            log.debug("辅料信息Map: {}", materialInfo);
 
             // 3. 多模态向量化
             log.info("开始多模态向量化...");
+            long vectorizeStartTime = System.currentTimeMillis();
             List<Float> vector = multimodalEmbeddingService.embedMaterial(materialInfo, file);
+            long vectorizeEndTime = System.currentTimeMillis();
+            log.info("多模态向量化完成，耗时: {} ms", vectorizeEndTime - vectorizeStartTime);
             log.info("多模态向量化成功，向量维度: {}", vector.size());
-            log.debug("向量前10个值: {}", vector.subList(0, Math.min(10, vector.size())));
+            if (vector.size() > 0) {
+                log.debug("向量前10个值: {}", vector.subList(0, Math.min(10, vector.size())));
+                log.debug("向量后10个值: {}", vector.subList(Math.max(0, vector.size() - 10), vector.size()));
+            }
 
             // 4. 保存向量到Milvus
             log.info("开始保存向量到Milvus...");
+            log.info("准备插入数据");
+            log.info("Collection名称: materials");
+            log.info("插入向量数量: 1");
+            log.info("辅料ID: {}", productId);
+            
             List<List<Float>> vectors = new ArrayList<>();
             vectors.add(vector);
             List<Long> ids = new ArrayList<>();
             ids.add(productId);
+            
+            long milvusStartTime = System.currentTimeMillis();
             milvusService.insert("materials", null, vectors, ids);
-            log.info("向量保存到Milvus成功，collection: materials, 辅料ID: {}", productId);
+            long milvusEndTime = System.currentTimeMillis();
+            
+            log.info("向量保存到Milvus成功");
+            log.info("保存耗时: {} ms", milvusEndTime - milvusStartTime);
+            log.info("collection: materials");
+            log.info("辅料ID: {}", productId);
+            log.info("向量维度: {}", vector.size());
+            
+            log.info("=== 向量化流程完成 ===");
 
             return Result.success("向量化并存储成功");
         } catch (Exception e) {
             log.error("向量化失败: {}", e.getMessage(), e);
+            log.error("异常详情:", e);
             return Result.error("向量化失败: " + e.getMessage());
         }
     }

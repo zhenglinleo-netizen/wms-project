@@ -27,6 +27,12 @@ public class ProductController {
         return Result.success(products);
     }
 
+    @GetMapping("/deleted")
+    public Result<List<Product>> getDeletedProducts() {
+        List<Product> products = productService.getDeletedProducts();
+        return Result.success(products);
+    }
+
     @GetMapping("/{id}")
     public Result<Product> getProductById(@PathVariable Long id) {
         Product product = productService.getProductById(id);
@@ -34,9 +40,9 @@ public class ProductController {
     }
 
     @PostMapping
-    public Result<String> saveProduct(@RequestBody Product product) {
+    public Result<Product> saveProduct(@RequestBody Product product) {
         productService.saveProduct(product);
-        return Result.success("添加成功", null);
+        return Result.success("添加成功", product);
     }
 
     @PutMapping
@@ -49,6 +55,18 @@ public class ProductController {
     public Result<String> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return Result.success("删除成功", null);
+    }
+
+    @PutMapping("/restore/{id}")
+    public Result<String> restoreProduct(@PathVariable Long id) {
+        productService.restoreProduct(id);
+        return Result.success("恢复成功", null);
+    }
+
+    @DeleteMapping("/permanent/{id}")
+    public Result<String> permanentlyDeleteProduct(@PathVariable Long id) {
+        productService.permanentlyDeleteProduct(id);
+        return Result.success("永久删除成功", null);
     }
 }
 

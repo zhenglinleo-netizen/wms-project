@@ -293,18 +293,32 @@
           <el-skeleton-item variant="text" style="width: 40%;" />
         </template>
       </el-skeleton>
+      
+      <!-- 分页组件 -->
+      <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[8]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </div>
 
     <!-- AI 识别弹窗 -->
     <el-dialog 
       v-model="aiDialogVisible" 
       title="AI 智能辅料识别" 
-      width="60%"
+      width="70%"
       :before-close="handleAIDialogClose"
       destroy-on-close
       append-to-body
+      :custom-class="'ai-recognition-dialog'"
     >
-      <div style="max-height: 500px; overflow-y: auto; overflow-x: hidden; padding: 0 10px;">
+      <div style="max-height: 600px; overflow-y: auto; overflow-x: hidden; padding: 0 10px;">
       <!-- 加载中状态 -->
       <div v-if="isRecognizing" style="padding: 40px 0; text-align: center;">
         <el-space direction="vertical" size="large">
@@ -332,113 +346,126 @@
       </div>
       
       <!-- 上传区域 -->
-      <div v-else-if="!recognitionResult">
-        <el-upload
-          drag
-          action="#"
-          :auto-upload="false"
-          :on-change="handleFileChange"
-          :on-remove="handleFileRemove"
-          :file-list="uploadedFiles"
-          list-type="picture"
-          :disabled="isRecognizing"
-          :multiple="false"
-        >
-          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-          <div class="el-upload__text">
-            拖拽文件到此处或 <em>点击上传</em>
-          </div>
-          <template #tip>
-            <div class="el-upload__tip" style="margin-top: 10px;">
-              <el-text size="small">
-                支持 JPG、PNG、BMP 格式，文件大小不超过 10MB
-              </el-text>
-            </div>
-          </template>
-        </el-upload>
-        
-        <!-- AI 识别按钮 -->
-        <div v-if="uploadedFiles.length > 0" style="margin-top: 20px; text-align: center;">
-          <el-button 
-            type="primary" 
-            size="large"
-            :icon="Camera"
-            @click="startAIRecognition"
-            :loading="isRecognizing"
+      <div v-else-if="!recognitionResult" class="upload-section">
+        <el-card :body-style="{ padding: '30px', textAlign: 'center' }">
+          <el-upload
+            drag
+            action="#"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
+            :file-list="uploadedFiles"
+            list-type="picture"
             :disabled="isRecognizing"
+            :multiple="false"
+            :class="'material-uploader'"
           >
-            🔍 开始 AI 识别
-          </el-button>
-          <el-text size="small" type="info" style="display: block; margin-top: 10px;">
-            点击后 AI 将分析图片特征并识别辅料信息
-          </el-text>
-        </div>
+            <el-icon class="el-icon--upload" style="font-size: 48px; color: #409EFF;"><upload-filled /></el-icon>
+            <div class="el-upload__text" style="font-size: 16px; margin: 20px 0;">
+              拖拽文件到此处或 <em style="color: #409EFF;">点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip" style="margin-top: 20px;">
+                <el-text size="small" type="info">
+                  📁 支持 JPG、PNG、BMP 格式<br>
+                  📏 文件大小不超过 10MB<br>
+                  🎯 建议上传清晰的辅料图片以获得最佳识别效果
+                </el-text>
+              </div>
+            </template>
+          </el-upload>
+          
+          <!-- AI 识别按钮 -->
+          <div v-if="uploadedFiles.length > 0" style="margin-top: 30px;">
+            <el-button 
+              type="primary" 
+              size="large"
+              :icon="Camera"
+              @click="startAIRecognition"
+              :loading="isRecognizing"
+              :disabled="isRecognizing"
+              style="width: 200px; height: 50px; font-size: 16px;"
+            >
+              🔍 开始 AI 识别
+            </el-button>
+            <el-text size="small" type="info" style="display: block; margin-top: 15px;">
+              点击后 AI 将分析图片特征并识别辅料信息，预计需要几秒钟时间
+            </el-text>
+          </div>
+        </el-card>
       </div>
       
       <!-- 识别结果 -->
-      <div v-else-if="recognitionResult">
+      <div v-else-if="recognitionResult" class="recognition-result">
         <!-- 识别结果头部 -->
-        <div style="margin-bottom: 20px;">
-          <el-space direction="vertical" size="small">
-            <el-text type="primary" size="large">
-              识别结果
-            </el-text>
-            <el-space>
-              <el-tag :type="getConfidenceLevel(recognitionResult.confidence)" size="large">
-                置信度: {{ (recognitionResult.confidence * 100).toFixed(1) }}%
-              </el-tag>
-              <el-button 
-                size="small" 
-                type="info" 
-                :icon="Refresh" 
-                @click="retryRecognition"
-              >
-                重新识别
-              </el-button>
-            </el-space>
+        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
+          <el-space direction="vertical" size="small" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <el-text type="primary" size="large" style="font-weight: bold;">
+                🎯 识别结果
+              </el-text>
+              <el-space>
+                <el-tag :type="getConfidenceLevel(recognitionResult.confidence)" size="large" :effect="'dark'">
+                  <el-icon style="margin-right: 5px;"><DataAnalysis /></el-icon>
+                  置信度: {{ (recognitionResult.confidence * 100).toFixed(1) }}%
+                </el-tag>
+                <el-button 
+                  size="small" 
+                  type="info" 
+                  :icon="Refresh" 
+                  @click="retryRecognition"
+                  :circle="false"
+                >
+                  重新识别
+                </el-button>
+              </el-space>
+            </div>
           </el-space>
-        </div>
+        </el-card>
         
         <!-- 识别图片展示 -->
-        <div style="margin-bottom: 20px;">
-          <el-text size="small" type="info">
-            识别图片
+        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
+          <el-text type="info" style="margin-bottom: 15px; display: block;">
+            📷 识别图片
           </el-text>
-          <div style="margin-top: 10px;">
+          <div style="display: flex; justify-content: center;">
             <el-image
               v-if="recognitionResult?.image || uploadedFiles[0]?.url"
               :src="recognitionResult?.image || uploadedFiles[0]?.url"
               fit="cover"
-              style="width: 200px; height: 200px; border-radius: 4px;"
+              style="width: 240px; height: 240px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);"
               @error="handleImageError"
             >
               <template #error>
-                <div style="width: 200px; height: 200px; border: 1px dashed #d9d9d9; border-radius: 4px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa;">
-                  <el-empty description="图片加载失败" :image-size="60" />
+                <div style="width: 240px; height: 240px; border: 2px dashed #d9d9d9; border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa;">
+                  <el-empty description="图片加载失败" :image-size="80" />
                 </div>
               </template>
             </el-image>
-            <div v-else style="width: 200px; height: 200px; border: 1px dashed #d9d9d9; border-radius: 4px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa;">
-              <el-empty description="无识别图片" :image-size="60" />
+            <div v-else style="width: 240px; height: 240px; border: 2px dashed #d9d9d9; border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa;">
+              <el-empty description="无识别图片" :image-size="80" />
             </div>
           </div>
-        </div>
+        </el-card>
         
         <!-- 识别结果标签 -->
-        <div style="margin-bottom: 20px;">
-          <el-space wrap>
-            <el-tag size="large">{{ recognitionResult.category }}</el-tag>
-            <el-tag size="large" v-if="recognitionResult.type">{{ recognitionResult.type }}</el-tag>
-            <el-tag size="large" v-if="recognitionResult.material">{{ recognitionResult.material }}</el-tag>
-            <el-tag size="large" v-if="recognitionResult.color">{{ recognitionResult.color }}</el-tag>
-            <el-tag size="large" v-if="recognitionResult.auxiliaryName">{{ recognitionResult.auxiliaryName }}</el-tag>
+        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
+          <el-text type="info" style="margin-bottom: 15px; display: block;">
+            🏷️ 识别标签
+          </el-text>
+          <el-space wrap :size="15">
+            <el-tag size="large" :effect="'dark'" type="primary">{{ recognitionResult.category }}</el-tag>
+            <el-tag size="large" :effect="'dark'" type="success" v-if="recognitionResult.type">{{ recognitionResult.type }}</el-tag>
+            <el-tag size="large" :effect="'dark'" type="warning" v-if="recognitionResult.material">{{ recognitionResult.material }}</el-tag>
+            <el-tag size="large" :effect="'dark'" type="info" v-if="recognitionResult.color">{{ recognitionResult.color }}</el-tag>
+            <el-tag size="large" :effect="'dark'" type="danger" v-if="recognitionResult.auxiliaryName">{{ recognitionResult.auxiliaryName }}</el-tag>
           </el-space>
-        </div>
+        </el-card>
         
         <!-- 上传额外图片 -->
-        <div style="margin-bottom: 20px;">
-          <el-text size="small" type="info">
-            可上传更多图片（最多5张）
+        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
+          <el-text type="info" style="margin-bottom: 15px; display: block;">
+            📚 可上传更多图片（最多5张）
           </el-text>
           <el-upload
             action="#"
@@ -449,152 +476,168 @@
             list-type="picture-card"
             :limit="5"
             :multiple="true"
+            :class="'additional-image-uploader'"
           >
-            <el-icon><UploadFilled /></el-icon>
-            <div class="el-upload__text">
+            <el-icon style="font-size: 24px; color: #409EFF;"><UploadFilled /></el-icon>
+            <div class="el-upload__text" style="font-size: 14px; color: #606266;">
               添加图片
             </div>
+            <template #tip>
+              <div class="el-upload__tip" style="margin-top: 10px;">
+                <el-text size="small" type="info">
+                  💡 上传多张图片可提高识别准确性
+                </el-text>
+              </div>
+            </template>
           </el-upload>
-        </div>
+        </el-card>
         
         <!-- 识别结果详情 -->
-        <el-collapse v-model="activeResultTabs">
-          <el-collapse-item title="详细信息" name="details">
-            <el-descriptions border :column="1" label-width="120px">
-              <el-descriptions-item label="类别">{{ recognitionResult.category }}</el-descriptions-item>
-              <el-descriptions-item label="具体类型">{{ recognitionResult.type || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="材质">{{ recognitionResult.material || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="颜色">{{ recognitionResult.color || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="辅料名称">{{ recognitionResult.auxiliaryName || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="风格">{{ recognitionResult.style || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="辅料类别">{{ recognitionResult.auxiliaryCategory || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="工艺大类">{{ recognitionResult.processCategory || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="材料层">{{ recognitionResult.materialLayer || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="效果层">{{ recognitionResult.effectLayer || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="适用阶段">{{ recognitionResult.applicationStage || '未识别' }}</el-descriptions-item>
-              <el-descriptions-item label="描述">{{ recognitionResult.description || '未识别' }}</el-descriptions-item>
-            </el-descriptions>
+        <el-collapse v-model="activeResultTabs" :class="'result-details-collapse'">
+          <el-collapse-item title="📋 详细信息" name="details">
+            <el-card :body-style="{ padding: '20px' }">
+              <el-descriptions border :column="1" label-width="120px">
+                <el-descriptions-item label="类别">{{ recognitionResult.category }}</el-descriptions-item>
+                <el-descriptions-item label="具体类型">{{ recognitionResult.type || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="材质">{{ recognitionResult.material || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="颜色">{{ recognitionResult.color || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="辅料名称">{{ recognitionResult.auxiliaryName || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="风格">{{ recognitionResult.style || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="辅料类别">{{ recognitionResult.auxiliaryCategory || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="工艺大类">{{ recognitionResult.processCategory || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="材料层">{{ recognitionResult.materialLayer || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="效果层">{{ recognitionResult.effectLayer || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="适用阶段">{{ recognitionResult.applicationStage || '未识别' }}</el-descriptions-item>
+                <el-descriptions-item label="描述">{{ recognitionResult.description || '未识别' }}</el-descriptions-item>
+              </el-descriptions>
+            </el-card>
           </el-collapse-item>
           
-          <el-collapse-item title="人工校正" name="correction">
-            <el-form :model="correctionForm" label-width="120px">
+          <el-collapse-item title="✏️ 人工校正" name="correction">
+            <el-card :body-style="{ padding: '20px' }">
+              <el-form :model="correctionForm" label-width="120px" :class="'correction-form'">
+                <el-row :gutter="20">
+                  <el-col :xs="24" :sm="12">
+                    <el-form-item label="校正类别">
+                      <el-select v-model="correctionForm.category" placeholder="选择类别" @change="updateAuxiliaryName" style="width: 100%;">
+                        <el-option label="面料" value="面料" />
+                        <el-option label="辅料" value="辅料" />
+                        <el-option label="扣件" value="扣件" />
+                        <el-option v-if="recognitionResult?.category" :label="recognitionResult.category" :value="recognitionResult.category">
+                          <template #default>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                              <span>{{ recognitionResult.category }}</span>
+                              <span style="color: #999; font-size: 12px;">AI识别</span>
+                            </div>
+                          </template>
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24" :sm="12">
+                    <el-form-item label="校正具体类型">
+                      <el-select v-model="correctionForm.type" placeholder="选择具体类型" filterable allow-create @change="updateAuxiliaryName" style="width: 100%;">
+                        <el-option v-for="type in typeOptions" :key="type" :label="type" :value="type" />
+                        <el-option v-if="recognitionResult?.type" :label="recognitionResult.type" :value="recognitionResult.type">
+                          <template #default>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                              <span>{{ recognitionResult.type }}</span>
+                              <span style="color: #999; font-size: 12px;">AI识别</span>
+                            </div>
+                          </template>
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24" :sm="12">
+                    <el-form-item label="校正材质">
+                      <el-select v-model="correctionForm.material" placeholder="选择材质" @change="updateAuxiliaryName" style="width: 100%;">
+                        <el-option label="棉" value="棉" />
+                        <el-option label="麻" value="麻" />
+                        <el-option label="丝" value="丝" />
+                        <el-option label="毛" value="毛" />
+                        <el-option label="涤纶" value="涤纶" />
+                        <el-option label="混纺" value="混纺" />
+                        <el-option v-if="recognitionResult?.material" :label="recognitionResult.material" :value="recognitionResult.material">
+                          <template #default>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                              <span>{{ recognitionResult.material }}</span>
+                              <span style="color: #999; font-size: 12px;">AI识别</span>
+                            </div>
+                          </template>
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24" :sm="12">
+                    <el-form-item label="校正颜色">
+                      <el-select v-model="correctionForm.color" placeholder="选择颜色" @change="updateAuxiliaryName" style="width: 100%;">
+                        <el-option label="红色" value="红色" />
+                        <el-option label="蓝色" value="蓝色" />
+                        <el-option label="绿色" value="绿色" />
+                        <el-option label="黄色" value="黄色" />
+                        <el-option label="黑色" value="黑色" />
+                        <el-option label="白色" value="白色" />
+                        <el-option label="灰色" value="灰色" />
+                        <el-option v-if="recognitionResult?.color" :label="recognitionResult.color" :value="recognitionResult.color">
+                          <template #default>
+                            <div style="display: flex; justify-content: space-between; width: 100%;">
+                              <span>{{ recognitionResult.color }}</span>
+                              <span style="color: #999; font-size: 12px;">AI识别</span>
+                            </div>
+                          </template>
+                        </el-option>
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正辅料名称">
+                      <el-input v-model="correctionForm.auxiliaryName" placeholder="输入辅料名称" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正风格">
+                      <el-input v-model="correctionForm.style" placeholder="输入风格关键词，如：优雅、浪漫、精致" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正描述">
+                      <el-input v-model="correctionForm.description" type="textarea" :rows="4" placeholder="输入详细描述" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+                <el-form-item style="margin-top: 20px;">
+                  <el-button type="primary" @click="saveCorrection" style="width: 120px;">
+                    <el-icon><Check /></el-icon>
+                    保存校正结果
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </el-card>
+          </el-collapse-item>
+          
+          <el-collapse-item title="🎯 相似辅料推荐" name="similar" v-if="recognitionResult.similar && recognitionResult.similar.length">
+            <el-card :body-style="{ padding: '20px' }">
               <el-row :gutter="20">
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="校正类别">
-                    <el-select v-model="correctionForm.category" placeholder="选择类别">
-                      <el-option label="面料" value="面料" />
-                      <el-option label="辅料" value="辅料" />
-                      <el-option label="扣件" value="扣件" />
-                      <el-option v-if="recognitionResult?.category" :label="recognitionResult.category" :value="recognitionResult.category">
-                        <template #default>
-                          <div style="display: flex; justify-content: space-between; width: 100%;">
-                            <span>{{ recognitionResult.category }}</span>
-                            <span style="color: #999; font-size: 12px;">AI识别</span>
-                          </div>
-                        </template>
-                      </el-option>
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="校正具体类型">
-                    <el-select v-model="correctionForm.type" placeholder="选择具体类型" filterable allow-create>
-                      <el-option v-for="type in typeOptions" :key="type" :label="type" :value="type" />
-                      <el-option v-if="recognitionResult?.type" :label="recognitionResult.type" :value="recognitionResult.type">
-                        <template #default>
-                          <div style="display: flex; justify-content: space-between; width: 100%;">
-                            <span>{{ recognitionResult.type }}</span>
-                            <span style="color: #999; font-size: 12px;">AI识别</span>
-                          </div>
-                        </template>
-                      </el-option>
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="校正材质">
-                    <el-select v-model="correctionForm.material" placeholder="选择材质">
-                      <el-option label="棉" value="棉" />
-                      <el-option label="麻" value="麻" />
-                      <el-option label="丝" value="丝" />
-                      <el-option label="毛" value="毛" />
-                      <el-option label="涤纶" value="涤纶" />
-                      <el-option label="混纺" value="混纺" />
-                      <el-option v-if="recognitionResult?.material" :label="recognitionResult.material" :value="recognitionResult.material">
-                        <template #default>
-                          <div style="display: flex; justify-content: space-between; width: 100%;">
-                            <span>{{ recognitionResult.material }}</span>
-                            <span style="color: #999; font-size: 12px;">AI识别</span>
-                          </div>
-                        </template>
-                      </el-option>
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24" :sm="12">
-                  <el-form-item label="校正颜色">
-                    <el-select v-model="correctionForm.color" placeholder="选择颜色">
-                      <el-option label="红色" value="红色" />
-                      <el-option label="蓝色" value="蓝色" />
-                      <el-option label="绿色" value="绿色" />
-                      <el-option label="黄色" value="黄色" />
-                      <el-option label="黑色" value="黑色" />
-                      <el-option label="白色" value="白色" />
-                      <el-option label="灰色" value="灰色" />
-                      <el-option v-if="recognitionResult?.color" :label="recognitionResult.color" :value="recognitionResult.color">
-                        <template #default>
-                          <div style="display: flex; justify-content: space-between; width: 100%;">
-                            <span>{{ recognitionResult.color }}</span>
-                            <span style="color: #999; font-size: 12px;">AI识别</span>
-                          </div>
-                        </template>
-                      </el-option>
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24">
-                  <el-form-item label="校正辅料名称">
-                    <el-input v-model="correctionForm.auxiliaryName" placeholder="输入辅料名称" />
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24">
-                  <el-form-item label="校正风格">
-                    <el-input v-model="correctionForm.style" placeholder="输入风格关键词，如：优雅、浪漫、精致" />
-                  </el-form-item>
-                </el-col>
-                <el-col :xs="24">
-                  <el-form-item label="校正描述">
-                    <el-input v-model="correctionForm.description" type="textarea" :rows="4" placeholder="输入详细描述" />
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              <el-form-item style="margin-top: 20px;">
-                <el-button type="primary" @click="saveCorrection">保存校正结果</el-button>
-              </el-form-item>
-            </el-form>
-          </el-collapse-item>
-          
-          <el-collapse-item title="相似辅料推荐" name="similar" v-if="recognitionResult.similar && recognitionResult.similar.length">
-            <el-card :body-style="{ padding: '15px' }">
-              <el-row :gutter="15">
-                <el-col :span="8" v-for="(item, index) in recognitionResult.similar" :key="index">
-                  <el-card shadow="hover" :body-style="{ padding: '10px' }">
+                <el-col :xs="24" :sm="12" :md="8" v-for="(item, index) in recognitionResult.similar" :key="index">
+                  <el-card shadow="hover" :body-style="{ padding: '15px' }" :class="'similar-material-card'">
                     <el-image 
                       v-lazy="item.image || 'https://via.placeholder.com/100'"
                       fit="cover" 
-                      style="width: 100%; height: 100px; border-radius: 4px; margin-bottom: 10px;"
+                      style="width: 100%; height: 120px; border-radius: 8px; margin-bottom: 12px;"
                     />
-                    <el-text :truncate="{ rows: 1 }" style="font-weight: 500;">
+                    <el-text :truncate="{ rows: 1 }" style="font-weight: 500; font-size: 14px;">
                       {{ item.name }}
                     </el-text>
-                    <el-text type="danger" size="small" style="display: block; margin-top: 5px;">
+                    <el-text type="danger" size="small" style="display: block; margin-top: 8px;">
                       ¥{{ item.price }}
                     </el-text>
                     <el-progress 
                       :percentage="item.similarity * 100" 
                       :format="() => `${(item.similarity * 100).toFixed(0)}%`" 
                       :size="'small'" 
-                      style="margin-top: 10px;"
+                      style="margin-top: 12px;"
+                      :stroke-width="8"
                     />
                   </el-card>
                 </el-col>
@@ -604,12 +647,18 @@
         </el-collapse>
         
         <!-- 识别结果操作 -->
-        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
-          <el-button @click="handleFileRemove">重新上传</el-button>
-          <el-button type="warning" @click="activeResultTabs = ['correction']">人工校正</el-button>
+        <div style="margin-top: 30px; display: flex; justify-content: flex-end; gap: 15px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+          <el-button @click="handleFileRemove" :icon="Close">
+            重新上传
+          </el-button>
+          <el-button type="warning" @click="activeResultTabs = ['correction']" :icon="Edit">
+            人工校正
+          </el-button>
           <el-button 
             type="success" 
             @click="confirmAddMaterial"
+            :icon="Star"
+            size="large"
           >
             添加到辅料库
           </el-button>
@@ -854,7 +903,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { Camera, Star, ShoppingCart, UploadFilled, Loading, Clock, Search, RefreshLeft, View, Refresh, ZoomIn, CopyDocument, Share, DataAnalysis, Close, Upload, Edit } from '@element-plus/icons-vue'
+import { Camera, Star, ShoppingCart, UploadFilled, Loading, Clock, Search, RefreshLeft, View, Refresh, ZoomIn, CopyDocument, Share, DataAnalysis, Close, Upload, Edit, Check } from '@element-plus/icons-vue'
 import { getMaterialList, recognizeMaterial, searchByImage } from '@/api/material'
 import { saveProduct, updateProduct, recommendProducts } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
@@ -864,6 +913,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useMaterialStore } from '@/stores/material'
 import { aiRequest } from '@/api/material'
+import { processImageUrl } from '@/utils/imageProcessor'
 
 const userStore = useUserStore()
 const materialStore = useMaterialStore()
@@ -872,6 +922,12 @@ const materials = ref([])
 const loading = ref(false)
 const sortBy = ref('default')
 const viewMode = ref('grid')
+
+// 分页相关状态
+const currentPage = ref(1)
+const pageSize = ref(8)
+const total = ref(0)
+const allMaterials = ref([])
 const filters = reactive({
   keyword: '',
   category: '',
@@ -928,8 +984,11 @@ const toggleFavoritesView = () => {
   showRecommendations.value = false // 确保推荐视图关闭
   if (showFavorites.value) {
     // Filter materials to only show favorites
-    const allMaterials = materials.value
-    materials.value = allMaterials.filter(item => favoriteMaterials.value.has(item.id))
+    const filteredMaterials = allMaterials.value.filter(item => favoriteMaterials.value.has(item.id))
+    allMaterials.value = filteredMaterials
+    total.value = allMaterials.value.length
+    currentPage.value = 1
+    updatePagination()
   } else {
     // Reload all materials
     loadMaterials()
@@ -1172,6 +1231,28 @@ const deleteRecognitionHistory = (id) => {
   ElMessage.success('识别历史已删除')
 }
 
+// 实时更新校正辅料名称
+const updateAuxiliaryName = () => {
+  // 优先使用校正值，如果没有则使用AI识别值
+  const type = correctionForm.type || recognitionResult.value?.type
+  const category = correctionForm.category || recognitionResult.value?.category
+  const material = correctionForm.material || recognitionResult.value?.material
+  const color = correctionForm.color || recognitionResult.value?.color
+  
+  // 按照统一格式构建辅料名称：具体类型--类别--材质--颜色
+  const parts = []
+  if (type) parts.push(type)
+  if (category) parts.push(category)
+  if (material) parts.push(material)
+  if (color) parts.push(color)
+  
+  // 如果有部分值，则更新辅料名称
+  if (parts.length > 0) {
+    correctionForm.auxiliaryName = parts.join('--')
+    console.log('实时更新辅料名称:', correctionForm.auxiliaryName)
+  }
+}
+
 const saveCorrection = () => {
   if (!recognitionResult.value) return
   
@@ -1293,17 +1374,38 @@ const confirmAddMaterial = async () => {
       const fileUrl = fileUrls[0] // 第一张图片作为主图
       
       // 构建辅料信息，使用人工校正后的结果
+      // 确保辅料名称格式统一为"具体类型--类别--材质--颜色"
+      const buildAuxiliaryName = () => {
+        if (correctionForm.auxiliaryName) {
+          return correctionForm.auxiliaryName
+        }
+        const parts = []
+        const type = correctionForm.type || recognitionResult.value?.type
+        const category = correctionForm.category || recognitionResult.value?.category
+        const material = correctionForm.material || recognitionResult.value?.material
+        const color = correctionForm.color || recognitionResult.value?.color
+        if (type) parts.push(type)
+        if (category) parts.push(category)
+        if (material) parts.push(material)
+        if (color) parts.push(color)
+        return parts.join('--')
+      }
+      
+      const auxiliaryName = buildAuxiliaryName()
+      
       const materialData = {
         productCode: generateProductCode(), // 自动生成辅料编码
-        productName: correctionForm.auxiliaryName || `${correctionForm.type || correctionForm.category}--${correctionForm.material}--${correctionForm.color}`,
+        productName: auxiliaryName,
         category: correctionForm.category || recognitionResult.value.category,
         type: correctionForm.type || recognitionResult.value.type || '',
+        material: correctionForm.material || recognitionResult.value.material || '',
+        color: correctionForm.color || recognitionResult.value.color || '',
         style: correctionForm.style || recognitionResult.value.style || '',
         specification: '',
         unit: '件',
         price: 0,
         expectedDeliveryDays: 0,
-        description: correctionForm.description || `${correctionForm.type || correctionForm.category}--${correctionForm.material}--${correctionForm.color}`,
+        description: correctionForm.description || auxiliaryName,
         status: 2, // 设置为待审核状态，需要管理员审核
         imageUrl: fileUrl, // 添加主图片URL
         image: fileUrl, // 添加image字段，确保前端可以正常显示
@@ -1316,13 +1418,40 @@ const confirmAddMaterial = async () => {
       console.log('主图片URL:', fileUrl);
       console.log('所有图片URL:', fileUrls);
       
-      // 直接调用API保存辅料信息
-      const saveResult = await saveProduct(materialData)
+      // 构建临时辅料信息，用于向量化
+      const tempMaterialData = {
+        ...materialData,
+        productCode: generateProductCode()
+      }
       
-      // 尝试进行向量化，但即使失败也不影响辅料添加
+      // 首先尝试进行向量化
+      console.log('=== 向量化流程开始 ===');
+      console.log('开始向量化操作');
+      
+      // 检查上传文件是否存在
+      console.log('检查上传文件状态:');
+      console.log('uploadedFiles.value:', uploadedFiles.value);
+      console.log('uploadedFiles.value.length:', uploadedFiles.value.length);
+      console.log('第一个文件是否存在:', !!uploadedFiles.value[0]);
+      console.log('第一个文件是否有raw属性:', !!uploadedFiles.value[0]?.raw);
+      
+      if (!uploadedFiles.value || uploadedFiles.value.length === 0 || !uploadedFiles.value[0]?.raw) {
+        console.error('向量化失败: 没有可用的上传文件');
+        ElMessage.error('向量化失败：无可用文件，无法添加辅料');
+        return;
+      }
+      
+      let vectorizeSuccess = false;
+      let productId = null;
+      
       try {
+        // 首先保存辅料信息，获取productId用于向量化
+        console.log('先保存辅料信息以获取ID');
+        const saveResult = await saveProduct(materialData);
+        console.log('辅料保存返回结果:', saveResult);
+        
         if (saveResult.code === 200 && saveResult.data && saveResult.data.id) {
-          const productId = saveResult.data.id
+          productId = saveResult.data.id;
           console.log('辅料保存成功，ID:', productId);
           
           // 调用新的向量化端点
@@ -1333,39 +1462,104 @@ const confirmAddMaterial = async () => {
           vectorizeFormData.append('productId', productId);
           vectorizeFormData.append('file', uploadedFiles.value[0].raw);
           
+          console.log('FormData构建完成:');
+          console.log('FormData包含productId:', vectorizeFormData.has('productId'));
+          console.log('FormData包含file:', vectorizeFormData.has('file'));
+          console.log('文件大小:', uploadedFiles.value[0].raw.size, '字节');
+          console.log('文件类型:', uploadedFiles.value[0].raw.type);
+          
           // 使用aiRequest实例发送请求，确保正确的baseURL和请求头
           console.log('使用aiRequest发送向量化请求');
           console.log('请求URL:', '/ai/vectorize');
-          console.log('请求参数:', { productId, hasFile: !!uploadedFiles.value[0].raw });
+          console.log('请求方法:', 'post');
+          console.log('请求参数:', { productId, fileName: uploadedFiles.value[0].name });
           
           try {
+            console.log('开始发送向量化请求...');
+            const startTime = Date.now();
             const vectorizeData = await aiRequest({
               url: '/ai/vectorize',
               method: 'post',
               data: vectorizeFormData
             });
+            const endTime = Date.now();
+            console.log('向量化请求完成，耗时:', endTime - startTime, 'ms');
             console.log('向量化返回结果:', vectorizeData);
           
             if (vectorizeData.code === 200) {
               console.log('向量化成功');
+              vectorizeSuccess = true;
+              ElMessage.success('辅料添加成功，向量化完成');
             } else {
               console.error('向量化失败:', vectorizeData.message);
-              // 向量化失败，仅记录错误，不影响辅料添加
-              ElMessage.warning('辅料添加成功，但向量化失败，相似辅料推荐功能可能受限');
+              // 向量化失败，需要删除已保存的辅料
+              throw new Error('向量化失败: ' + vectorizeData.message);
             }
           } catch (vectorizeError) {
             console.error('向量化过程中发生错误:', vectorizeError);
-            // 向量化失败，仅记录错误，不影响辅料添加
-            ElMessage.warning('辅料添加成功，但向量化失败，相似辅料推荐功能可能受限');
+            console.error('错误详情:', {
+              message: vectorizeError.message,
+              stack: vectorizeError.stack,
+              config: vectorizeError.config,
+              response: vectorizeError.response
+            });
+            
+            // 分析错误类型并提供具体的错误信息
+            let errorMessage = '向量化失败';
+            if (vectorizeError.message.includes('Network Error')) {
+              errorMessage = '网络连接失败，请检查网络设置';
+            } else if (vectorizeError.message.includes('401')) {
+              errorMessage = 'API密钥无效，请检查配置';
+            } else if (vectorizeError.message.includes('403')) {
+              errorMessage = 'API权限不足，请检查权限设置';
+            } else if (vectorizeError.message.includes('408')) {
+              errorMessage = '请求超时，请检查网络连接';
+            } else if (vectorizeError.message.includes('500')) {
+              errorMessage = '服务器内部错误，请稍后重试';
+            } else if (vectorizeError.message.includes('502')) {
+              errorMessage = '网关错误，请稍后重试';
+            } else if (vectorizeError.message.includes('503')) {
+              errorMessage = '服务不可用，请稍后重试';
+            } else if (vectorizeError.message.includes('504')) {
+              errorMessage = '网关超时，请稍后重试';
+            } else {
+              errorMessage = '向量化失败: ' + vectorizeError.message;
+            }
+            
+            // 向量化失败，需要删除已保存的辅料
+            throw new Error(errorMessage);
           }
+        } else {
+          throw new Error('辅料保存失败: ' + saveResult.message);
         }
       } catch (vectorizeOuterError) {
         console.error('向量化外层异常:', vectorizeOuterError);
-        // 向量化失败，仅记录错误，不影响辅料添加
+        console.error('外层错误详情:', {
+          message: vectorizeOuterError.message,
+          stack: vectorizeOuterError.stack
+        });
+        
+        // 向量化失败，返回详细的错误提示
+        ElMessage.error('向量化失败：' + vectorizeOuterError.message + '，无法添加辅料');
+        
+        // 如果已经保存了辅料，尝试删除
+        if (productId) {
+          console.log('尝试删除已保存的辅料:', productId);
+          try {
+            // 这里可以添加删除辅料的API调用
+          } catch (deleteError) {
+            console.error('删除辅料失败:', deleteError);
+          }
+        }
+        
+        return;
       }
       
-      // 显示成功提示
-      ElMessage.success('辅料已成功添加到待审核列表，请等待管理员审核')
+      // 只有向量化成功后，才显示成功提示
+      if (vectorizeSuccess) {
+        // 显示成功提示
+        ElMessage.success('辅料已成功添加到待审核列表，请等待管理员审核')
+      }
       
       // 关闭AI识别对话框
       aiDialogVisible.value = false
@@ -1526,12 +1720,19 @@ const loadMaterials = async () => {
         }
       })
       
+      // 存储所有数据用于分页
+      allMaterials.value = materials.value
+      total.value = allMaterials.value.length
+      currentPage.value = 1
+      updatePagination()
+      
       // 调试打印辅料数据
       console.log('加载的辅料数据:', materials.value)
       console.log('图片URL示例:', materials.value.map(item => ({ 
         name: item.productName, 
         image: item.image 
       })))
+      console.log('总辅料数量:', total.value)
     }
   } catch (error) {
     console.error('加载辅料列表失败:', error)
@@ -1703,10 +1904,30 @@ const startAIRecognition = async () => {
         console.warn('API返回数据无效:', res.data)
       }
       
-      // 保存识别结果，暂不包含图片URL
+      // 上传图片以获取持久化的URL
+      let persistentImageUrl = file.url // 默认使用临时URL
+      try {
+        console.log('开始上传图片以获取持久化URL...')
+        const uploadRes = await uploadFile(file.raw)
+        if (uploadRes.code === 200 && uploadRes.data) {
+          persistentImageUrl = uploadRes.data
+          console.log('图片上传成功，获取到持久化URL:', persistentImageUrl)
+        } else {
+          console.warn('图片上传失败，将使用临时URL:', uploadRes)
+        }
+      } catch (error) {
+        console.error('上传图片失败:', error)
+        // 继续使用临时URL，不影响识别流程
+      }
+      
+      // 处理图片URL，确保格式正确
+      const processedImageUrl = processImageUrl(persistentImageUrl)
+      console.log('处理后的图片URL:', processedImageUrl)
+      
+      // 保存识别结果，包含处理后的图片URL
       const resultWithImage = {
         ...res.data,
-        image: file.url // 使用临时URL进行预览
+        image: processedImageUrl || persistentImageUrl // 使用处理后的URL或原始URL
       }
       
       // 确保图片URL格式正确
@@ -1923,28 +2144,7 @@ const handleMoreImagesFileRemove = (file, fileList) => {
   moreImagesFiles.value = fileList
 }
 
-// 处理单个图片URL的函数
-const processImageUrl = (url) => {
-  if (!url || typeof url !== 'string') return null
-  
-  // 过滤掉错误的图片URL（如"上传成功"）
-  if (url === '上传成功' || url === '[]') {
-    return null
-  } else if (url.startsWith('http')) {
-    // 提取文件名（忽略bucket名称）
-    const lastSlashIndex = url.lastIndexOf('/')
-    if (lastSlashIndex !== -1) {
-      const filename = url.substring(lastSlashIndex + 1)
-      // 使用后端接口获取图片，避免MinIO认证问题
-      return `/file/get-image?filename=${filename}`
-    }
-  } else if (!url.startsWith('/file/get-image')) {
-    // 如果不是http开头也不是/file/get-image格式，直接使用文件名
-    return `/file/get-image?filename=${url}`
-  }
-  // 保留已经是/file/get-image格式的URL
-  return url
-}
+
 
 // 获取处理后的单个图片URL
 const getProcessedImageUrl = (material) => {
@@ -2223,6 +2423,25 @@ const addToProject = async () => {
   } catch (error) {
     ElMessage.error('添加失败，请重试')
   }
+}
+
+// 分页方法
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  updatePagination()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  updatePagination()
+}
+
+// 更新分页数据
+const updatePagination = () => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  materials.value = allMaterials.value.slice(start, end)
 }
 
 onMounted(() => {

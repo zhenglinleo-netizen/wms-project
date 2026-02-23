@@ -31,6 +31,17 @@
       
       <el-table :data="tableData" border style="width: 100%">
         <el-table-column prop="productCode" label="辅料编码" width="150" />
+        <el-table-column prop="imageUrl" label="缩略图" width="120" align="center">
+          <template #default="scope">
+            <el-image 
+              :src="scope.row.imageUrl || 'https://via.placeholder.com/60'" 
+              fit="cover" 
+              style="width: 60px; height: 60px; border-radius: 4px; margin: 0 auto; display: block;"
+              :preview-src-list="[scope.row.imageUrl || 'https://via.placeholder.com/60']"
+              preview-teleported
+            />
+          </template>
+        </el-table-column>
         <el-table-column prop="productName" label="辅料名称" width="150" />
         <el-table-column prop="category" label="分类" width="120" />
         <el-table-column prop="type" label="具体类型" width="120" />
@@ -65,6 +76,19 @@
           </template>
         </el-table-column>
       </el-table>
+      
+      <!-- 分页组件 -->
+      <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[8]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
     
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" append-to-body>
@@ -140,6 +164,15 @@ const dialogTitle = ref('新增辅料')
 const isEdit = ref(false)
 const formRef = ref()
 
+// 存储所有辅料名称，用于唯一性验证
+const allProductNames = ref([])
+
+// 分页相关状态
+const currentPage = ref(1)
+const pageSize = ref(8)
+const total = ref(0)
+const allData = ref([])
+
 const searchForm = reactive({
   productCode: '',
   productName: '',
@@ -164,7 +197,31 @@ const form = reactive({
 
 const rules = {
   productCode: [{ required: true, message: '请输入辅料编码', trigger: 'blur' }],
-  productName: [{ required: true, message: '请输入辅料名称', trigger: 'blur' }],
+  productName: [
+    { required: true, message: '请输入辅料名称', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value) {
+          // 检查辅料名称是否已存在
+          const currentProduct = tableData.value.find(item => item.id === form.id)
+          const currentProductName = currentProduct?.productName
+          
+          const isDuplicate = allProductNames.value.some(name => 
+            name === value && (name !== currentProductName)
+          )
+          
+          if (isDuplicate) {
+            callback(new Error('辅料名称已存在，请使用其他名称'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
   price: [{ required: true, message: '请输入单价', trigger: 'blur' }],
   expectedDeliveryDays: [{ required: true, message: '请输入预期货期', trigger: 'blur' }, { type: 'number', min: 0, message: '预期货期必须大于等于0', trigger: 'blur' }]
@@ -204,18 +261,49 @@ const loadData = async () => {
     let data = res.data || []
     
     // 简化数据处理，直接使用数据库返回的字段
-    data = data.map(item => ({
-      ...item,
-      // 确保分类字段存在
-      category: item.category || item.categoryName || '',
-      // 直接使用数据库返回的type和style字段
-      type: item.type || '',
-      style: item.style || '',
-      // 确保库存数量字段存在，处理不同可能的字段名
-      stock: item.stock || item.quantity || 0
-    }))
+    data = data.map(item => {
+      // 处理图片URL
+      let imageUrl = item.image || item.imageUrl || item.image_url || ''
+      if (imageUrl && typeof imageUrl === 'string') {
+        // 过滤掉错误的图片URL（如"上传成功"）
+        if (imageUrl === '上传成功' || imageUrl === '[]') {
+          imageUrl = ''
+        } else if (imageUrl.startsWith('http')) {
+          // 提取文件名（忽略bucket名称）
+          const lastSlashIndex = imageUrl.lastIndexOf('/')
+          if (lastSlashIndex !== -1) {
+            const filename = imageUrl.substring(lastSlashIndex + 1)
+            // 使用后端接口获取图片，避免MinIO认证问题
+            imageUrl = '/api/file/get-image?filename=' + filename
+          }
+        } else if (!imageUrl.startsWith('/api/file/get-image')) {
+          // 如果不是http开头也不是/api/file/get-image格式，直接使用文件名
+          imageUrl = '/api/file/get-image?filename=' + imageUrl
+        }
+        // 保留已经是/api/file/get-image格式的URL
+      }
+      
+      return {
+        ...item,
+        // 确保分类字段存在
+        category: item.category || item.categoryName || '',
+        // 直接使用数据库返回的type和style字段
+        type: item.type || '',
+        style: item.style || '',
+        // 确保库存数量字段存在，处理不同可能的字段名
+        stock: item.stock || item.quantity || 0,
+        // 添加处理后的图片URL
+        imageUrl: imageUrl
+      }
+    })
     
-    tableData.value = data
+    allData.value = data
+    total.value = data.length
+    currentPage.value = 1
+    updatePagination()
+    
+    // 更新所有辅料名称列表，用于唯一性验证
+    allProductNames.value = data.map(item => item.productName).filter(Boolean)
   } catch (error) {
     console.error('加载辅料数据失败:', error)
     ElMessage.error('加载数据失败')
@@ -361,6 +449,25 @@ const resetForm = () => {
   form.price = 0
   form.description = ''
   // 不再设置status字段，状态通过操作按钮控制
+}
+
+// 分页方法
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  updatePagination()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  updatePagination()
+}
+
+// 更新分页数据
+const updatePagination = () => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  tableData.value = allData.value.slice(start, end)
 }
 
 onMounted(() => {

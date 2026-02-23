@@ -44,6 +44,10 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
 
     @Override
     public List<Float> embedText(String text) throws Exception {
+        if (text == null || text.trim().isEmpty()) {
+            throw new IllegalArgumentException("文本内容不能为空");
+        }
+        
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
 
@@ -57,6 +61,7 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
         input.put("contents", contents);
         requestBody.put("input", input);
 
+        log.info("发送文本向量化请求，文本长度: {}", text.length());
         String response = sendHttpRequest(requestBody);
         return parseVectorResponse(response);
     }
@@ -161,60 +166,107 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
      */
     private String sendHttpRequest(Map<String, Object> requestBody) throws Exception {
         HttpURLConnection connection = null;
-        try {
-            URL requestUrl = new URL(apiUrl);
-            connection = (HttpURLConnection) requestUrl.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
-            connection.setConnectTimeout(timeout);
-            connection.setReadTimeout(timeout);
-            connection.setDoOutput(true);
+        int maxRetries = 3;
+        int retryDelay = 1000; // 1秒
+        
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                URL requestUrl = new URL(apiUrl);
+                connection = (HttpURLConnection) requestUrl.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+                connection.setConnectTimeout(timeout);
+                connection.setReadTimeout(timeout);
+                connection.setDoOutput(true);
+                connection.setDoInput(true);
+                connection.setUseCaches(false);
 
-            String jsonBody = objectMapper.writeValueAsString(requestBody);
+                String jsonBody = objectMapper.writeValueAsString(requestBody);
+                log.debug("千问API请求体: {}", jsonBody);
 
-            try (OutputStream os = connection.getOutputStream()) {
-                byte[] input = jsonBody.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
+                try (OutputStream os = connection.getOutputStream()) {
+                    byte[] input = jsonBody.getBytes(StandardCharsets.UTF_8);
+                    os.write(input, 0, input.length);
+                    os.flush();
+                }
 
-            int responseCode = connection.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                // 读取错误信息
-                StringBuilder errorBuilder = new StringBuilder();
+                int responseCode = connection.getResponseCode();
+                log.info("千问API响应状态码: {}", responseCode);
+                
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    // 读取错误信息
+                    StringBuilder errorBuilder = new StringBuilder();
+                    try (BufferedReader br = new BufferedReader(
+                            new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8))) {
+                        String responseLine;
+                        while ((responseLine = br.readLine()) != null) {
+                            errorBuilder.append(responseLine.trim());
+                        }
+                    } catch (Exception e) {
+                        log.warn("读取错误流失败: {}", e.getMessage());
+                    }
+                    String errorMessage = errorBuilder.toString();
+                    log.error("千问API请求失败，状态码: {}, 错误信息: {}", responseCode, errorMessage);
+                    
+                    // 对于特定错误码，考虑重试
+                    if (responseCode >= 500 && attempt < maxRetries) {
+                        log.warn("千问API返回服务器错误，尝试重试 ({}/{})...", attempt, maxRetries);
+                        Thread.sleep(retryDelay);
+                        retryDelay *= 2; // 指数退避
+                        continue;
+                    }
+                    
+                    throw new RuntimeException("千问API请求失败，状态码: " + responseCode + ", 错误信息: " + errorMessage);
+                }
+
+                StringBuilder response = new StringBuilder();
                 try (BufferedReader br = new BufferedReader(
-                        new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8))) {
+                        new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
                     String responseLine;
                     while ((responseLine = br.readLine()) != null) {
-                        errorBuilder.append(responseLine.trim());
+                        response.append(responseLine.trim());
                     }
                 }
-                String errorMessage = errorBuilder.toString();
-                log.error("千问API请求失败，状态码: {}, 错误信息: {}", responseCode, errorMessage);
-                throw new RuntimeException("千问API请求失败，状态码: " + responseCode + ", 错误信息: " + errorMessage);
-            }
 
-            StringBuilder response = new StringBuilder();
-            try (BufferedReader br = new BufferedReader(
-                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                String responseLine;
-                while ((responseLine = br.readLine()) != null) {
-                    response.append(responseLine.trim());
+                log.debug("千问API响应: {}", response.toString());
+                return response.toString();
+            } catch (Exception e) {
+                log.error("千问API请求异常 (尝试 {}): {}", attempt, e.getMessage());
+                
+                // 对于网络异常，考虑重试
+                if ((e instanceof java.net.SocketTimeoutException || e instanceof java.net.ConnectException) && attempt < maxRetries) {
+                    log.warn("网络异常，尝试重试 ({}/{})...", attempt, maxRetries);
+                    Thread.sleep(retryDelay);
+                    retryDelay *= 2; // 指数退避
+                    continue;
+                }
+                
+                throw e;
+            } finally {
+                if (connection != null) {
+                    try {
+                        connection.disconnect();
+                    } catch (Exception e) {
+                        log.warn("关闭连接失败: {}", e.getMessage());
+                    }
                 }
             }
-
-            return response.toString();
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
+        
+        // 如果所有重试都失败，抛出异常
+        throw new RuntimeException("千问API请求失败，已尝试最大重试次数");
     }
 
     /**
      * 解析千问API返回的向量数据
      */
     private List<Float> parseVectorResponse(String response) throws Exception {
+        if (response == null || response.trim().isEmpty()) {
+            log.error("千问API返回空响应");
+            throw new RuntimeException("千问API返回空响应");
+        }
+        
         log.info("千问API返回原始响应：{}", response);
         JsonNode rootNode = objectMapper.readTree(response);
         
@@ -235,13 +287,13 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
         if (dataNode.isArray() && dataNode.size() > 0) {
             JsonNode firstItemNode = dataNode.get(0);
             embeddingNode = firstItemNode.path("embedding");
-            log.info("尝试格式1解析，找到embedding字段: {}", embeddingNode.isArray());
+            log.info("尝试格式1解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
         }
         
         // 格式2: {"embedding": [...]} (直接返回向量)
         if (embeddingNode == null || !embeddingNode.isArray()) {
             embeddingNode = rootNode.path("embedding");
-            log.info("尝试格式2解析，找到embedding字段: {}", embeddingNode.isArray());
+            log.info("尝试格式2解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
         }
         
         // 格式3: {"result": {"embedding": [...]}} (结果嵌套)
@@ -249,7 +301,7 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
             JsonNode resultNode = rootNode.path("result");
             if (resultNode.isObject()) {
                 embeddingNode = resultNode.path("embedding");
-                log.info("尝试格式3解析，找到embedding字段: {}", embeddingNode.isArray());
+                log.info("尝试格式3解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
             }
         }
         
@@ -258,10 +310,10 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
             JsonNode outputNode = rootNode.path("output");
             if (outputNode.isObject()) {
                 embeddingNode = outputNode.path("embeddings");
-                log.info("尝试格式4解析，找到embeddings字段: {}", embeddingNode.isArray());
+                log.info("尝试格式4解析，找到embeddings字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
                 if (!embeddingNode.isArray()) {
                     embeddingNode = outputNode.path("embedding");
-                    log.info("尝试格式4解析，找到embedding字段: {}", embeddingNode.isArray());
+                    log.info("尝试格式4解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
                 }
             }
         }
@@ -270,7 +322,7 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
         if (embeddingNode == null || !embeddingNode.isArray()) {
             if (dataNode.isObject()) {
                 embeddingNode = dataNode.path("embedding");
-                log.info("尝试格式5解析，找到embedding字段: {}", embeddingNode.isArray());
+                log.info("尝试格式5解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
             }
         }
         
@@ -280,7 +332,7 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
             if (outputsNode.isArray() && outputsNode.size() > 0) {
                 JsonNode firstOutputNode = outputsNode.get(0);
                 embeddingNode = firstOutputNode.path("embedding");
-                log.info("尝试格式6解析，找到embedding字段: {}", embeddingNode.isArray());
+                log.info("尝试格式6解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
             }
         }
         
@@ -289,7 +341,7 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
             JsonNode responseNode = rootNode.path("response");
             if (responseNode.isObject()) {
                 embeddingNode = responseNode.path("embedding");
-                log.info("尝试格式7解析，找到embedding字段: {}", embeddingNode.isArray());
+                log.info("尝试格式7解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
             }
         }
         
@@ -299,20 +351,20 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
             if (resultArrayNode.isArray() && resultArrayNode.size() > 0) {
                 JsonNode firstResultNode = resultArrayNode.get(0);
                 embeddingNode = firstResultNode.path("embedding");
-                log.info("尝试格式8解析，找到embedding字段: {}", embeddingNode.isArray());
+                log.info("尝试格式8解析，找到embedding字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
             }
         }
         
         // 格式9: {"vectors": [...]} (vectors直接数组格式)
         if (embeddingNode == null || !embeddingNode.isArray()) {
             embeddingNode = rootNode.path("vectors");
-            log.info("尝试格式9解析，找到vectors字段: {}", embeddingNode.isArray());
+            log.info("尝试格式9解析，找到vectors字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
         }
         
         // 格式10: {"vector": [...]} (vector直接数组格式)
         if (embeddingNode == null || !embeddingNode.isArray()) {
             embeddingNode = rootNode.path("vector");
-            log.info("尝试格式10解析，找到vector字段: {}", embeddingNode.isArray());
+            log.info("尝试格式10解析，找到vector字段: {}, 长度: {}", embeddingNode.isArray(), embeddingNode.isArray() ? embeddingNode.size() : 0);
         }
 
         if (!embeddingNode.isArray()) {
@@ -351,24 +403,36 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
         }
 
         List<Float> vector = new ArrayList<>();
+        int validElements = 0;
+        int invalidElements = 0;
+        
         for (JsonNode element : embeddingNode) {
             if (element.isDouble()) {
                 vector.add((float) element.asDouble());
+                validElements++;
             } else if (element.isInt()) {
                 vector.add((float) element.asInt());
+                validElements++;
             } else if (element.isFloat()) {
                 vector.add(element.floatValue());
+                validElements++;
             } else if (element.isNumber()) {
                 // 处理其他数字类型
                 vector.add((float) element.asDouble());
+                validElements++;
             } else {
                 log.warn("跳过非数字元素: {}", element.asText());
+                invalidElements++;
             }
         }
 
+        log.info("向量解析统计: 总元素数: {}, 有效元素数: {}, 无效元素数: {}", 
+                embeddingNode.size(), validElements, invalidElements);
+
         if (vector.isEmpty()) {
-            log.error("千问API返回空向量，embedding字段长度: {}", embeddingNode.size());
-            throw new RuntimeException("千问API返回空向量");
+            log.error("千问API返回空向量，embedding字段长度: {}, 有效元素数: {}, 无效元素数: {}", 
+                    embeddingNode.size(), validElements, invalidElements);
+            throw new RuntimeException("千问API返回空向量，可能原因: 1. 输入内容无效 2. API响应格式异常 3. 向量计算失败");
         }
 
         log.info("成功获取多模态向量，维度: {}", vector.size());

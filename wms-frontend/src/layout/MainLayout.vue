@@ -475,7 +475,7 @@ import { saveProduct, updateProduct, recommendProducts } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
 import { getInventoryList } from '@/api/inventory'
 import { uploadFile, deleteFile, checkFileExists, uploadMultipleFiles } from '@/api/file'
-import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis } from '@element-plus/icons-vue'
+import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis, Delete } from '@element-plus/icons-vue'
 import { processImageUrl, getProcessedImageUrl, getImagePreviewList } from '@/utils/imageProcessor'
 
 const route = useRoute()
@@ -513,6 +513,7 @@ const currentPageName = computed(() => {
     '/purchase-management': '采购管理',
     '/inventory-management': '库存管理',
     '/material-management': '辅料管理',
+    '/material-recycle': '辅料回收站',
     '/supplier': '供应商库',
     '/supplier/relationship': '供需关系管理',
     '/data-analysis': '数据分析与报表',
@@ -551,16 +552,27 @@ const menuItems = [
     title: '采购管理'
   },
   {
-    index: '/inventory-management',
-    icon: Box,
-    title: '库存管理',
-    requireAdmin: true
-  },
-  {
     index: '/material-management',
     icon: GoodsFilled,
     title: '辅料管理',
-    requireAdmin: true
+    requireAdmin: true,
+    children: [
+      {
+        index: '/material-management',
+        icon: GoodsFilled,
+        title: '辅料管理库'
+      },
+      {
+        index: '/inventory-management',
+        icon: Box,
+        title: '库存管理'
+      },
+      {
+        index: '/material-recycle',
+        icon: Delete,
+        title: '辅料回收站'
+      }
+    ]
   },
   {
     index: '/supplier',

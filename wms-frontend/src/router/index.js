@@ -66,6 +66,12 @@ const routes = [
         meta: { title: '辅料管理', requiresAdmin: true }
       },
       {
+        path: 'material-recycle',
+        name: 'MaterialRecycle',
+        component: () => import('@/views/MaterialRecycle.vue'),
+        meta: { title: '辅料回收站', requiresAdmin: true }
+      },
+      {
         path: 'category-management',
         name: 'CategoryManagement',
         component: () => import('@/views/Category.vue'),

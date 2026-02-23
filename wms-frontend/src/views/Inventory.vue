@@ -68,6 +68,19 @@
         </el-table-column>
         <el-table-column prop="updateTime" label="更新时间" width="180" align="center" />
       </el-table>
+      
+      <!-- 分页组件 -->
+      <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[8]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -80,6 +93,11 @@ import { getProductList } from '@/api/product'
 
 const tableData = ref([])
 
+// 分页相关状态
+const currentPage = ref(1)
+const pageSize = ref(8)
+const total = ref(0)
+const allData = ref([])
 
 const searchForm = reactive({
   productName: ''
@@ -114,17 +132,21 @@ const loadData = async () => {
       let imageUrl = product.image || product.imageUrl || product.image_url || ''
       if (imageUrl && typeof imageUrl === 'string') {
         // 过滤掉错误的图片URL（如"上传成功"）
-        if (imageUrl === '上传成功' || imageUrl === '[]' || !imageUrl.startsWith('http')) {
+        if (imageUrl === '上传成功' || imageUrl === '[]') {
           imageUrl = ''
-        } else {
+        } else if (imageUrl.startsWith('http')) {
           // 提取文件名（忽略bucket名称）
           const lastSlashIndex = imageUrl.lastIndexOf('/')
           if (lastSlashIndex !== -1) {
             const filename = imageUrl.substring(lastSlashIndex + 1)
             // 使用后端接口获取图片，避免MinIO认证问题
-            imageUrl = `/api/file/get-image?filename=${filename}`
+            imageUrl = '/api/file/get-image?filename=' + filename
           }
+        } else if (!imageUrl.startsWith('/api/file/get-image')) {
+          // 如果不是http开头也不是/api/file/get-image格式，直接使用文件名
+          imageUrl = '/api/file/get-image?filename=' + imageUrl
         }
+        // 保留已经是/api/file/get-image格式的URL
       }
       
       return {
@@ -148,7 +170,10 @@ const loadData = async () => {
       )
     }
     
-    tableData.value = mergedData
+    allData.value = mergedData
+    total.value = mergedData.length
+    currentPage.value = 1
+    updatePagination()
   } catch (error) {
     console.error('加载库存数据失败:', error)
     ElMessage.error('加载数据失败')
@@ -226,6 +251,25 @@ const reduceInventory = async (row) => {
     console.error('减少库存失败:', error)
     ElMessage.error('库存减少失败')
   }
+}
+
+// 分页方法
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  updatePagination()
+}
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current
+  updatePagination()
+}
+
+// 更新分页数据
+const updatePagination = () => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  tableData.value = allData.value.slice(start, end)
 }
 
 onMounted(() => {
