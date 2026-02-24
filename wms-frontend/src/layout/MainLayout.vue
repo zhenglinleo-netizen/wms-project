@@ -1,11 +1,11 @@
 <template>
   <el-container class="layout-container" @click="handleClickOutside">
     <!-- 移动端菜单展开按钮 -->
-    <div class="mobile-menu-toggle" @click="toggleSidebar" @click.stop>
-      <el-icon><ArrowLeft :class="{ 'rotate-180': isSidebarCollapsed }"></ArrowLeft></el-icon>
-    </div>
+  <div class="mobile-menu-toggle" @click="toggleMobileSidebar" @click.stop>
+    <el-icon><ArrowLeft :class="{ 'rotate-180': isSidebarExpanded }"></ArrowLeft></el-icon>
+  </div>
     
-    <el-aside width="240px" class="sidebar" :class="{ 'sidebar-collapsed': isSidebarCollapsed }" @click.stop>
+    <el-aside width="240px" class="sidebar" :class="{ 'sidebar-collapsed': isSidebarCollapsed, 'sidebar-expanded': isSidebarExpanded }" @click.stop>
       <div class="logo" :class="{ 'logo-collapsed': isSidebarCollapsed }">
         <el-icon class="logo-icon"><GoodsFilled /></el-icon>
         <h2 v-if="!isSidebarCollapsed">辅料采购平台</h2>
@@ -304,8 +304,9 @@
                   style="cursor: pointer;"
                 >
                   <el-image 
-                    v-if="getProcessedImageUrl(item)"
-                    v-lazy="getProcessedImageUrl(item)"
+                    v-if="item.image"
+                    :src="item.image"
+                    loading="lazy"
                     fit="cover"
                     style="width: 100%; height: 80px; border-radius: 4px; margin-bottom: 8px;"
                     @click.stop
@@ -365,7 +366,8 @@
                 >
                   <el-image 
                     v-if="rec.image"
-                    v-lazy="rec.image"
+                    :src="rec.image"
+                    loading="lazy"
                     fit="cover"
                     style="width: 100%; height: 80px; border-radius: 4px; margin-bottom: 8px;"
                   />
@@ -470,11 +472,11 @@ import { useUserStore } from '@/stores/user'
 import { useMaterialStore } from '@/stores/material'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { changePassword } from '@/api/user'
-import { getMaterialList, recognizeMaterial, searchByImage } from '@/api/material'
-import { saveProduct, updateProduct, recommendProducts } from '@/api/product'
+import { getMaterialList } from '@/api/material'
+import { recommendProducts } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
 import { getInventoryList } from '@/api/inventory'
-import { uploadFile, deleteFile, checkFileExists, uploadMultipleFiles } from '@/api/file'
+import { uploadMultipleFiles } from '@/api/file'
 import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis, Delete } from '@element-plus/icons-vue'
 import { processImageUrl, getProcessedImageUrl, getImagePreviewList } from '@/utils/imageProcessor'
 
@@ -705,6 +707,7 @@ const translateRole = (role) => {
 
 // 侧边栏状态管理
 const isSidebarCollapsed = ref(false)
+const isSidebarExpanded = ref(false) // 移动端侧边栏展开状态
 
 // 菜单状态管理
 const openMenus = ref([])
@@ -738,6 +741,11 @@ const saveMenuState = () => {
 const toggleSidebar = () => {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
   saveMenuState()
+}
+
+// 切换移动端侧边栏
+const toggleMobileSidebar = () => {
+  isSidebarExpanded.value = !isSidebarExpanded.value
 }
 
 // 处理菜单选择
@@ -1063,17 +1071,62 @@ const addToProject = async () => {
   border-radius: 0 24px 24px 0;
   box-shadow: 0 0 30px rgba(33, 150, 243, 0.12);
   border: 1px solid #e0f2fe;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
+  transform: translateX(0);
+  z-index: 100;
 }
 
 .sidebar:hover {
   box-shadow: 0 0 40px rgba(33, 150, 243, 0.18);
+  transform: translateX(4px);
 }
 
 /* 侧边栏折叠状态 */
 .sidebar.sidebar-collapsed {
   width: 80px !important;
+  transform: translateX(0);
+  animation: sidebarCollapse 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 侧边栏展开状态 */
+.sidebar:not(.sidebar-collapsed) {
+  animation: sidebarExpand 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 侧边栏折叠动画 */
+@keyframes sidebarCollapse {
+  from {
+    width: 240px !important;
+    box-shadow: 0 0 30px rgba(33, 150, 243, 0.12);
+  }
+  to {
+    width: 80px !important;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.1);
+  }
+}
+
+/* 侧边栏展开动画 */
+@keyframes sidebarExpand {
+  from {
+    width: 80px !important;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.1);
+  }
+  to {
+    width: 240px !important;
+    box-shadow: 0 0 30px rgba(33, 150, 243, 0.12);
+  }
+}
+
+/* 菜单项文字动画 */
+.sidebar :deep(.el-menu-item span),
+.sidebar :deep(.el-sub-menu__title span) {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.sidebar.sidebar-collapsed :deep(.el-menu-item span),
+.sidebar.sidebar-collapsed :deep(.el-sub-menu__title span) {
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* 菜单搜索 */
@@ -1199,6 +1252,7 @@ const addToProject = async () => {
   background: transparent !important;
   max-height: calc(100vh - 160px);
   overflow-y: auto;
+  position: relative;
 }
 
 /* 滚动条样式 */
@@ -1219,61 +1273,219 @@ const addToProject = async () => {
 
 .custom-menu::-webkit-scrollbar-thumb:hover {
   background: #90caf9;
+  transform: scaleX(1.2);
 }
 
 /* 子菜单容器 */
 :deep(.el-sub-menu .el-menu) {
   background: transparent !important;
-  animation: submenuSlideIn 0.3s ease-out;
+  animation: submenuSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
 }
 
 /* 子菜单滑入动画 */
 @keyframes submenuSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-10px) scaleY(0.9);
+    box-shadow: 0 0 0 rgba(33, 150, 243, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scaleY(1);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
   }
 }
 
-/* 菜单 */
-.custom-menu {
-  border-right: none;
-  margin-top: 24px;
-  background: transparent !important;
-}
-
-/* 子菜单容器 */
-:deep(.el-sub-menu .el-menu) {
-  background: transparent !important;
-}
-
+/* 菜单图标 */
 .menu-icon {
   font-size: 20px;
   margin-right: 16px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   color: #2196f3;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background-color: rgba(33, 150, 243, 0.1);
+}
+
+.menu-icon:hover {
+  transform: scale(1.2) rotate(10deg);
+  background-color: rgba(33, 150, 243, 0.2);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
 }
 
 .sub-menu-icon {
   font-size: 18px;
   margin-right: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   color: #2196f3;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background-color: rgba(33, 150, 243, 0.08);
+}
+
+.sub-menu-icon:hover {
+  transform: scale(1.1) rotate(5deg);
+  background-color: rgba(33, 150, 243, 0.15);
+}
+
+/* 菜单项样式 */
+:deep(.el-menu-item) {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-radius: 12px !important;
+  margin: 4px 12px !important;
+  padding: 16px 20px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #0d47a1 !important;
+}
+
+:deep(.el-menu-item:hover) {
+  background-color: rgba(33, 150, 243, 0.08) !important;
+  transform: translateX(8px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
+}
+
+:deep(.el-menu-item.is-active) {
+  background-color: rgba(33, 150, 243, 0.15) !important;
+  color: #1976d2 !important;
+  font-weight: 600 !important;
+  transform: translateX(8px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.15);
+  animation: menuItemActive 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+:deep(.el-menu-item.is-active::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
+  border-radius: 0 4px 4px 0;
+  animation: menuItemBorderSlide 0.4s ease-out;
+}
+
+/* 子菜单项样式 */
+:deep(.el-sub-menu .el-menu-item) {
+  margin: 2px 8px !important;
+  padding: 12px 16px 12px 40px !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
+}
+
+:deep(.el-sub-menu .el-menu-item:hover) {
+  transform: translateX(4px) scale(1.01);
+}
+
+:deep(.el-sub-menu .el-menu-item.is-active) {
+  transform: translateX(4px) scale(1.01);
+}
+
+/* 子菜单标题样式 */
+:deep(.el-sub-menu__title) {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-radius: 12px !important;
+  margin: 4px 12px !important;
+  padding: 16px 20px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #0d47a1 !important;
+}
+
+:deep(.el-sub-menu__title:hover) {
+  background-color: rgba(33, 150, 243, 0.08) !important;
+  transform: translateX(8px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
+}
+
+:deep(.el-sub-menu__title.is-active) {
+  background-color: rgba(33, 150, 243, 0.12) !important;
+  color: #1976d2 !important;
+  font-weight: 600 !important;
+}
+
+/* 子菜单箭头动画 */
+:deep(.el-sub-menu__icon-arrow) {
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  font-size: 16px !important;
+  align-self: center !important;
+  margin-top: 0 !important;
+  margin-left: auto !important;
+}
+
+:deep(.el-sub-menu__title:hover .el-sub-menu__icon-arrow) {
+  transform: rotate(90deg) scale(1.2);
+  color: #1976d2;
+}
+
+:deep(.el-sub-menu.is-opened .el-sub-menu__icon-arrow) {
+  transform: rotate(90deg);
+  color: #1976d2;
+  animation: arrowRotate 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 菜单动画 */
+@keyframes menuItemActive {
+  from {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.9);
+    box-shadow: 0 0 0 rgba(33, 150, 243, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(8px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.15);
+  }
+}
+
+@keyframes menuItemBorderSlide {
+  from {
+    height: 0;
+    top: 50%;
+    bottom: 50%;
+  }
+  to {
+    height: 100%;
+    top: 0;
+    bottom: 0;
+  }
+}
+
+@keyframes arrowRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(90deg);
+  }
 }
 
 /* 侧边栏折叠状态下的样式 */
 .sidebar.sidebar-collapsed :deep(.el-menu-item) {
   justify-content: center !important;
-  padding: 14px !important;
+  padding: 16px !important;
   margin: 8px 8px !important;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar.sidebar-collapsed :deep(.el-menu-item span) {
@@ -1283,12 +1495,16 @@ const addToProject = async () => {
 .sidebar.sidebar-collapsed :deep(.el-menu-item .menu-icon) {
   margin-right: 0 !important;
   font-size: 24px !important;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar.sidebar-collapsed :deep(.el-sub-menu__title) {
   justify-content: center !important;
-  padding: 14px !important;
+  padding: 16px !important;
   margin: 8px 8px !important;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar.sidebar-collapsed :deep(.el-sub-menu__title span) {
@@ -1298,6 +1514,8 @@ const addToProject = async () => {
 .sidebar.sidebar-collapsed :deep(.el-sub-menu__title .menu-icon) {
   margin-right: 0 !important;
   font-size: 24px !important;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar.sidebar-collapsed :deep(.el-sub-menu__title .el-sub-menu__icon-arrow) {
@@ -1313,7 +1531,8 @@ const addToProject = async () => {
   border-radius: 0 16px 16px 0 !important;
   box-shadow: 0 0 20px rgba(33, 150, 243, 0.15) !important;
   border: 1px solid #e0f2fe !important;
-  z-index: 100 !important;
+  z-index: 1000 !important;
+  animation: submenuSlideIn 0.3s ease-out;
 }
 
 .sidebar.sidebar-collapsed :deep(.el-sub-menu .el-menu-item) {
@@ -1332,6 +1551,28 @@ const addToProject = async () => {
 }
 
 /* 响应式设计 */
+@media (max-width: 1400px) {
+  .sidebar {
+    width: 220px !important;
+  }
+  
+  .sidebar.sidebar-collapsed {
+    width: 80px !important;
+  }
+  
+  .logo h2 {
+    font-size: 20px !important;
+  }
+  
+  .logo-icon {
+    font-size: 32px !important;
+  }
+  
+  .sidebar.sidebar-collapsed .logo-icon {
+    font-size: 28px !important;
+  }
+}
+
 @media (max-width: 1200px) {
   .sidebar {
     width: 200px !important;
@@ -1350,7 +1591,7 @@ const addToProject = async () => {
   }
   
   .sidebar.sidebar-collapsed .logo-icon {
-    font-size: 28px !important;
+    font-size: 26px !important;
   }
   
   :deep(.el-menu-item) {
@@ -1371,6 +1612,14 @@ const addToProject = async () => {
   .sub-menu-icon {
     font-size: 16px !important;
     margin-right: 10px !important;
+  }
+  
+  .header {
+    padding: 0 20px !important;
+  }
+  
+  .main-content {
+    padding: 20px !important;
   }
 }
 
@@ -1418,6 +1667,12 @@ const addToProject = async () => {
     left: 100% !important;
     top: 0 !important;
     min-width: 160px !important;
+    background: white !important;
+    border-radius: 0 16px 16px 0 !important;
+    box-shadow: 0 0 20px rgba(33, 150, 243, 0.15) !important;
+    border: 1px solid #e0f2fe !important;
+    z-index: 100 !important;
+    animation: slideInRight 0.3s ease-out !important;
   }
   
   .sidebar :deep(.el-sub-menu .el-menu-item) {
@@ -1451,6 +1706,40 @@ const addToProject = async () => {
   .menu-header {
     display: none !important;
   }
+  
+  .header {
+    padding: 0 16px !important;
+  }
+  
+  .header-left {
+    flex: 1;
+  }
+  
+  .header-right {
+    flex-shrink: 0;
+  }
+  
+  .breadcrumb {
+    font-size: 13px !important;
+  }
+  
+  .main-content {
+    padding: 16px !important;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  
+  .welcome-text {
+    font-size: 12px !important;
+  }
+  
+  .username-highlight {
+    font-size: 13px !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1466,7 +1755,8 @@ const addToProject = async () => {
     z-index: 1000 !important;
     border-radius: 0 !important;
     transform: translateX(0) !important;
-    transition: transform 0.3s ease !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 0 30px rgba(33, 150, 243, 0.2) !important;
   }
   
   .sidebar.sidebar-collapsed {
@@ -1479,10 +1769,13 @@ const addToProject = async () => {
   
   .el-main {
     margin-left: 0 !important;
+    padding: 16px !important;
   }
   
   .header {
     margin-left: 0 !important;
+    padding: 0 16px !important;
+    height: 60px !important;
   }
   
   /* 移动端菜单展开按钮 */
@@ -1503,11 +1796,183 @@ const addToProject = async () => {
     box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3) !important;
     cursor: pointer !important;
     transition: all 0.3s ease !important;
+    animation: fadeIn 0.3s ease-out !important;
   }
   
   .mobile-menu-toggle:hover {
     background: #f0f9ff !important;
     transform: scale(1.1) !important;
+    box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4) !important;
+  }
+  
+  .mobile-menu-toggle.el-icon {
+    color: #1976d2 !important;
+    font-size: 20px !important;
+  }
+  
+  /* 移动端适配 */
+  .breadcrumb {
+    font-size: 12px !important;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  
+  .welcome-text {
+    font-size: 11px !important;
+    display: none !important;
+  }
+  
+  .username-highlight {
+    font-size: 12px !important;
+  }
+  
+  .user-avatar {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  /* 移动端卡片适配 */
+  :deep(.el-card) {
+    margin-bottom: 16px !important;
+  }
+  
+  :deep(.el-card__body) {
+    padding: 16px !important;
+  }
+  
+  /* 移动端表格适配 */
+  :deep(.el-table) {
+    font-size: 12px !important;
+  }
+  
+  :deep(.el-table th),
+  :deep(.el-table td) {
+    padding: 10px 8px !important;
+  }
+  
+  /* 移动端按钮适配 */
+  :deep(.el-button) {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+  }
+  
+  /* 移动端表单适配 */
+  :deep(.el-form-item) {
+    margin-bottom: 16px !important;
+  }
+  
+  :deep(.el-form-item__label) {
+    font-size: 12px !important;
+  }
+  
+  /* 移动端对话框适配 */
+  :deep(.el-dialog) {
+    width: 90% !important;
+    max-width: 500px !important;
+  }
+  
+  :deep(.el-drawer) {
+    width: 85% !important;
+    max-width: 400px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 0 12px !important;
+  }
+  
+  .main-content {
+    padding: 12px !important;
+  }
+  
+  .mobile-menu-toggle {
+    width: 44px !important;
+    height: 44px !important;
+    left: 8px !important;
+    top: 8px !important;
+  }
+  
+  .mobile-menu-toggle.el-icon {
+    font-size: 18px !important;
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+  }
+  
+  .user-avatar {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  
+  .username-highlight {
+    font-size: 11px !important;
+    margin-left: 8px !important;
+  }
+  
+  /* 移动端卡片适配 */
+  :deep(.el-card__body) {
+    padding: 12px !important;
+  }
+  
+  /* 移动端表格适配 */
+  :deep(.el-table th),
+  :deep(.el-table td) {
+    padding: 8px 6px !important;
+    font-size: 11px !important;
+  }
+  
+  /* 移动端按钮适配 */
+  :deep(.el-button) {
+    font-size: 11px !important;
+    padding: 5px 10px !important;
+  }
+  
+  /* 移动端对话框适配 */
+  :deep(.el-dialog) {
+    width: 95% !important;
+    max-width: 400px !important;
+  }
+  
+  :deep(.el-dialog__header) {
+    padding: 12px 16px !important;
+  }
+  
+  :deep(.el-dialog__body) {
+    padding: 16px !important;
+  }
+  
+  :deep(.el-dialog__footer) {
+    padding: 12px 16px !important;
+  }
+}
+
+/* 响应式动画 */
+@keyframes slideInRight {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

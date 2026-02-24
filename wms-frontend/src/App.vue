@@ -1,8 +1,48 @@
 <template>
-  <router-view />
+  <RouteTransition 
+    :default-transition="'fade'"
+    :duration="350"
+    :route-transitions="routeTransitions"
+    :custom-classes="customClasses"
+  >
+    <router-view />
+  </RouteTransition>
 </template>
 
 <script setup>
+import RouteTransition from './components/RouteTransition.vue'
+
+// 为特定路由配置不同的过渡动画
+const routeTransitions = {
+  // 主要页面使用更生动的动画
+  Dashboard: 'bounce',
+  Login: 'elastic',
+  MaterialLibrary: 'slide-left',
+  InventoryManagement: 'slide-right',
+  MaterialManagement: 'slide-up',
+  ProjectScheme: 'scale',
+  RequirementManagement: 'slide-up',
+  PurchaseManagement: 'slide-up',
+  DataAnalysis: 'elastic',
+  SystemManagement: 'fade',
+  MaterialRecycle: 'slide-left',
+  CategoryManagement: 'slide-right',
+  User: 'scale',
+  Supplier: 'slide-up',
+  SupplierRelationship: 'slide-up',
+  // 其他可能的路由
+  TestSimilarMaterials: 'bounce',
+  Warehouse: 'slide-up',
+  Product: 'slide-up'
+}
+
+// 自定义动画类名（可选）
+const customClasses = {
+  enterActive: '',
+  leaveActive: '',
+  enterFrom: '',
+  leaveTo: ''
+}
 </script>
 
 <style>

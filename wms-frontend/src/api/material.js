@@ -35,11 +35,27 @@ aiRequest.interceptors.response.use(
       status: response.status,
       data: response.data
     });
-    const res = response.data
+    console.log('完整的响应数据:', JSON.stringify(response.data, null, 2));
+    const res = response.data;
+    
+    // 检查响应数据的结构
+    console.log('响应数据结构检查:', {
+      hasCode: 'code' in res,
+      codeValue: res.code,
+      hasMessage: 'message' in res,
+      messageValue: res.message,
+      hasData: 'data' in res,
+      dataValue: res.data
+    });
+    
     if (res.code === 200) {
-      return res
+      console.log('响应成功，返回数据:', res);
+      return res;
     } else {
-      return Promise.reject(new Error(res.message || '请求失败'))
+      const errorMessage = res.message || '请求失败';
+      console.error('AI响应错误，状态码:', res.code, '错误信息:', errorMessage);
+      console.error('完整的错误响应:', JSON.stringify(res, null, 2));
+      return Promise.reject(new Error(errorMessage));
     }
   },
   error => {
@@ -49,7 +65,14 @@ aiRequest.interceptors.response.use(
       config: error.config,
       response: error.response
     });
-    return Promise.reject(error)
+    console.error('完整的错误对象:', JSON.stringify(error, null, 2));
+    
+    // 处理网络错误和其他异常
+    let errorMessage = '网络请求失败';
+    if (error.message) {
+      errorMessage = error.message;
+    }
+    return Promise.reject(new Error(errorMessage));
   }
 )
 

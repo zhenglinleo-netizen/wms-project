@@ -215,7 +215,8 @@
           <template #default="scope">
             <el-space>
               <el-image 
-                v-lazy="scope.row.image || 'https://via.placeholder.com/50'"
+                :src="scope.row.image || 'https://via.placeholder.com/50'"
+                loading="lazy"
                 fit="cover" 
                 style="width: 40px; height: 40px; border-radius: 4px;"
               />
@@ -622,7 +623,8 @@
                 <el-col :xs="24" :sm="12" :md="8" v-for="(item, index) in recognitionResult.similar" :key="index">
                   <el-card shadow="hover" :body-style="{ padding: '15px' }" :class="'similar-material-card'">
                     <el-image 
-                      v-lazy="item.image || 'https://via.placeholder.com/100'"
+                      :src="item.image || 'https://via.placeholder.com/100'"
+                      loading="lazy"
                       fit="cover" 
                       style="width: 100%; height: 120px; border-radius: 8px; margin-bottom: 12px;"
                     />
@@ -688,7 +690,8 @@
           <el-card shadow="hover">
             <el-image 
               v-if="item.image"
-              v-lazy="item.image"
+              :src="item.image"
+              loading="lazy"
               fit="cover"
               style="width: 100%; height: 150px;"
             />
@@ -728,7 +731,8 @@
           <template #default="scope">
             <el-image 
               v-if="scope.row.image"
-              v-lazy="scope.row.image"
+              :src="scope.row.image"
+              loading="lazy"
               fit="cover" 
               style="width: 50px; height: 50px; border-radius: 4px;" 
             />
@@ -905,7 +909,7 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { Camera, Star, ShoppingCart, UploadFilled, Loading, Clock, Search, RefreshLeft, View, Refresh, ZoomIn, CopyDocument, Share, DataAnalysis, Close, Upload, Edit, Check } from '@element-plus/icons-vue'
 import { getMaterialList, recognizeMaterial, searchByImage } from '@/api/material'
-import { saveProduct, updateProduct, recommendProducts } from '@/api/product'
+import { saveProduct, updateProduct, recommendProducts, deleteProduct } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
 import { getInventoryList } from '@/api/inventory'
 import { uploadFile, deleteFile, checkFileExists, uploadMultipleFiles } from '@/api/file'
@@ -1473,10 +1477,20 @@ const confirmAddMaterial = async () => {
           console.log('请求URL:', '/ai/vectorize');
           console.log('请求方法:', 'post');
           console.log('请求参数:', { productId, fileName: uploadedFiles.value[0].name });
+          console.log('FormData内容检查:', {
+            hasProductId: vectorizeFormData.has('productId'),
+            productIdValue: vectorizeFormData.get('productId'),
+            hasFile: vectorizeFormData.has('file'),
+            fileValue: vectorizeFormData.get('file')
+          });
           
           try {
             console.log('开始发送向量化请求...');
             const startTime = Date.now();
+            console.log('发送请求前的FormData状态:', {
+              productId: vectorizeFormData.get('productId'),
+              fileExists: !!vectorizeFormData.get('file')
+            });
             const vectorizeData = await aiRequest({
               url: '/ai/vectorize',
               method: 'post',
@@ -1485,6 +1499,7 @@ const confirmAddMaterial = async () => {
             const endTime = Date.now();
             console.log('向量化请求完成，耗时:', endTime - startTime, 'ms');
             console.log('向量化返回结果:', vectorizeData);
+            console.log('向量化返回结果详细信息:', JSON.stringify(vectorizeData, null, 2));
           
             if (vectorizeData.code === 200) {
               console.log('向量化成功');
@@ -1492,6 +1507,7 @@ const confirmAddMaterial = async () => {
               ElMessage.success('辅料添加成功，向量化完成');
             } else {
               console.error('向量化失败:', vectorizeData.message);
+              console.error('向量化失败详细信息:', JSON.stringify(vectorizeData, null, 2));
               // 向量化失败，需要删除已保存的辅料
               throw new Error('向量化失败: ' + vectorizeData.message);
             }
@@ -1506,24 +1522,28 @@ const confirmAddMaterial = async () => {
             
             // 分析错误类型并提供具体的错误信息
             let errorMessage = '向量化失败';
-            if (vectorizeError.message.includes('Network Error')) {
-              errorMessage = '网络连接失败，请检查网络设置';
-            } else if (vectorizeError.message.includes('401')) {
-              errorMessage = 'API密钥无效，请检查配置';
-            } else if (vectorizeError.message.includes('403')) {
-              errorMessage = 'API权限不足，请检查权限设置';
-            } else if (vectorizeError.message.includes('408')) {
-              errorMessage = '请求超时，请检查网络连接';
-            } else if (vectorizeError.message.includes('500')) {
-              errorMessage = '服务器内部错误，请稍后重试';
-            } else if (vectorizeError.message.includes('502')) {
-              errorMessage = '网关错误，请稍后重试';
-            } else if (vectorizeError.message.includes('503')) {
-              errorMessage = '服务不可用，请稍后重试';
-            } else if (vectorizeError.message.includes('504')) {
-              errorMessage = '网关超时，请稍后重试';
+            if (vectorizeError.message) {
+              if (vectorizeError.message.includes('Network Error')) {
+                errorMessage = '网络连接失败，请检查网络设置';
+              } else if (vectorizeError.message.includes('401')) {
+                errorMessage = 'API密钥无效，请检查配置';
+              } else if (vectorizeError.message.includes('403')) {
+                errorMessage = 'API权限不足，请检查权限设置';
+              } else if (vectorizeError.message.includes('408')) {
+                errorMessage = '请求超时，请检查网络连接';
+              } else if (vectorizeError.message.includes('500')) {
+                errorMessage = '服务器内部错误，请稍后重试';
+              } else if (vectorizeError.message.includes('502')) {
+                errorMessage = '网关错误，请稍后重试';
+              } else if (vectorizeError.message.includes('503')) {
+                errorMessage = '服务不可用，请稍后重试';
+              } else if (vectorizeError.message.includes('504')) {
+                errorMessage = '网关超时，请稍后重试';
+              } else {
+                errorMessage = '向量化失败: ' + vectorizeError.message;
+              }
             } else {
-              errorMessage = '向量化失败: ' + vectorizeError.message;
+              errorMessage = '向量化失败: 未知错误';
             }
             
             // 向量化失败，需要删除已保存的辅料
@@ -1540,18 +1560,20 @@ const confirmAddMaterial = async () => {
         });
         
         // 向量化失败，返回详细的错误提示
-        ElMessage.error('向量化失败：' + vectorizeOuterError.message + '，无法添加辅料');
+        const errorMessage = vectorizeOuterError.message || '向量化失败：未知错误';
         
-        // 如果已经保存了辅料，尝试删除
+        // 如果已经保存了辅料，必须删除，因为向量化失败了
         if (productId) {
-          console.log('尝试删除已保存的辅料:', productId);
+          console.log('向量化失败，删除已保存的辅料:', productId);
           try {
-            // 这里可以添加删除辅料的API调用
+            await deleteProduct(productId);
+            console.log('已删除保存的辅料:', productId);
           } catch (deleteError) {
             console.error('删除辅料失败:', deleteError);
           }
         }
         
+        ElMessage.error('向量化失败：' + errorMessage + '，无法添加辅料');
         return;
       }
       

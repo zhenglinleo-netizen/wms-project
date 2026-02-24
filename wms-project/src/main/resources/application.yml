@@ -16,7 +16,6 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
-  # Redis配置
   redis:
     host: localhost
     port: 6379
@@ -29,7 +28,6 @@ spring:
         max-wait: -1
         max-idle: 8
         min-idle: 0
-  # RabbitMQ配置
   rabbitmq:
     host: localhost
     port: 5672
@@ -54,22 +52,15 @@ mybatis:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-sql:
-  init:
-    mode: always
-    schema-locations: classpath:db/schema_purchase_platform.sql
-
 logging:
   level:
     com.example.wms.mapper: debug
     root: info
 
-# JWT配置
 jwt:
   secret: purchase-platform-secret-key-should-be-at-least-256-bits-long-for-security-purposes
-  expiration: 86400000 # 24小时（毫秒）
+  expiration: 86400000
 
-# MinIO配置
 minio:
   endpoint: http://localhost:9004
   accessKey: minioadmin
@@ -79,23 +70,26 @@ minio:
   secure: false
   pathStyleAccess: true
 
-# Milvus配置
 milvus:
   host: localhost
   port: 19530
   token: 
 
-# 智谱大模型API配置
 zhipu:
   api-key: user's API key
   api-url: https://open.bigmodel.cn/api/paas/v4/chat/completions
   model: GLM-4.1V-Thinking-Flash
   timeout: 30000
 
-# 千问多模态向量化API配置
 dashscope:
   api-key: user's API key
   api-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding
   model: qwen3-vl-embedding
   timeout: 30000
   vector-dimension: 2048
+
+bailian:
+  api-key: user's API key
+  api-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding
+  model: qwen3-vl-embedding
+  timeout: 30000

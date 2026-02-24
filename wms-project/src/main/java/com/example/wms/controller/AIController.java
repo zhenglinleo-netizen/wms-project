@@ -89,6 +89,12 @@ public class AIController {
             log.info("辅料类型: {}", product.getType());
             log.info("辅料材质: {}", product.getMaterial());
             log.info("辅料颜色: {}", product.getColor());
+            log.info("辅料风格: {}", product.getStyle());
+            log.info("辅料规格: {}", product.getSpecification());
+            log.info("辅料单位: {}", product.getUnit());
+            log.info("辅料价格: {}", product.getPrice());
+            log.info("预计交付天数: {}", product.getExpectedDeliveryDays());
+            log.info("产品编码: {}", product.getProductCode());
             log.info("辅料描述: {}", product.getDescription());
 
             // 2. 构建辅料信息Map
@@ -99,6 +105,12 @@ public class AIController {
             materialInfo.put("type", product.getType());
             materialInfo.put("material", product.getMaterial());
             materialInfo.put("color", product.getColor());
+            materialInfo.put("style", product.getStyle());
+            materialInfo.put("specification", product.getSpecification());
+            materialInfo.put("unit", product.getUnit());
+            materialInfo.put("price", product.getPrice());
+            materialInfo.put("expectedDeliveryDays", product.getExpectedDeliveryDays());
+            materialInfo.put("productCode", product.getProductCode());
             materialInfo.put("description", product.getDescription());
             log.info("构建辅料信息Map成功");
             log.debug("辅料信息Map: {}", materialInfo);
@@ -106,44 +118,75 @@ public class AIController {
             // 3. 多模态向量化
             log.info("开始多模态向量化...");
             long vectorizeStartTime = System.currentTimeMillis();
-            List<Float> vector = multimodalEmbeddingService.embedMaterial(materialInfo, file);
-            long vectorizeEndTime = System.currentTimeMillis();
-            log.info("多模态向量化完成，耗时: {} ms", vectorizeEndTime - vectorizeStartTime);
-            log.info("多模态向量化成功，向量维度: {}", vector.size());
-            if (vector.size() > 0) {
-                log.debug("向量前10个值: {}", vector.subList(0, Math.min(10, vector.size())));
-                log.debug("向量后10个值: {}", vector.subList(Math.max(0, vector.size() - 10), vector.size()));
-            }
+            try {
+                List<Float> vector = multimodalEmbeddingService.embedMaterial(materialInfo, file);
+                long vectorizeEndTime = System.currentTimeMillis();
+                log.info("多模态向量化完成，耗时: {} ms", vectorizeEndTime - vectorizeStartTime);
+                log.info("多模态向量化成功，向量维度: {}", vector.size());
+                if (vector.size() > 0) {
+                    log.debug("向量前10个值: {}", vector.subList(0, Math.min(10, vector.size())));
+                    log.debug("向量后10个值: {}", vector.subList(Math.max(0, vector.size() - 10), vector.size()));
+                }
 
-            // 4. 保存向量到Milvus
-            log.info("开始保存向量到Milvus...");
-            log.info("准备插入数据");
-            log.info("Collection名称: materials");
-            log.info("插入向量数量: 1");
-            log.info("辅料ID: {}", productId);
-            
-            List<List<Float>> vectors = new ArrayList<>();
-            vectors.add(vector);
-            List<Long> ids = new ArrayList<>();
-            ids.add(productId);
-            
-            long milvusStartTime = System.currentTimeMillis();
-            milvusService.insert("materials", null, vectors, ids);
-            long milvusEndTime = System.currentTimeMillis();
-            
-            log.info("向量保存到Milvus成功");
-            log.info("保存耗时: {} ms", milvusEndTime - milvusStartTime);
-            log.info("collection: materials");
-            log.info("辅料ID: {}", productId);
-            log.info("向量维度: {}", vector.size());
+                // 4. 保存向量到Milvus
+                log.info("开始保存向量到Milvus...");
+                log.info("准备插入数据");
+                log.info("Collection名称: materials");
+                log.info("插入向量数量: 1");
+                log.info("辅料ID: {}", productId);
+                log.info("向量维度: {}", vector.size());
+                log.info("向量前5个值: {}", vector.subList(0, Math.min(5, vector.size())));
+                
+                List<List<Float>> vectors = new ArrayList<>();
+                vectors.add(vector);
+                List<Long> ids = new ArrayList<>();
+                ids.add(productId);
+                
+                long milvusStartTime = System.currentTimeMillis();
+                try {
+                    milvusService.insert("materials", null, vectors, ids);
+                    long milvusEndTime = System.currentTimeMillis();
+                    
+                    log.info("向量保存到Milvus成功");
+                    log.info("保存耗时: {} ms", milvusEndTime - milvusStartTime);
+                    log.info("collection: materials");
+                    log.info("辅料ID: {}", productId);
+                    log.info("向量维度: {}", vector.size());
+                } catch (Exception milvusException) {
+                    log.error("保存向量到Milvus失败: {}", milvusException.getMessage(), milvusException);
+                    throw new RuntimeException("保存向量到Milvus失败: " + milvusException.getMessage(), milvusException);
+                }
+            } catch (Exception vectorizeException) {
+                log.error("多模态向量化失败: {}", vectorizeException.getMessage(), vectorizeException);
+                throw new RuntimeException("多模态向量化失败: " + vectorizeException.getMessage(), vectorizeException);
+            }
             
             log.info("=== 向量化流程完成 ===");
 
             return Result.success("向量化并存储成功");
+        } catch (RuntimeException e) {
+            // 处理运行时异常
+            log.error("向量化运行时失败: {}", e.getMessage(), e);
+            log.error("异常类型: {}", e.getClass().getName());
+            String errorMessage = e.getMessage();
+            if (errorMessage == null) {
+                errorMessage = "未知运行时错误，请查看服务器日志获取详细信息";
+                log.error("异常消息为null，使用默认错误信息");
+            }
+            return Result.error("向量化失败: " + errorMessage);
         } catch (Exception e) {
+            // 处理其他异常
             log.error("向量化失败: {}", e.getMessage(), e);
             log.error("异常详情:", e);
-            return Result.error("向量化失败: " + e.getMessage());
+            log.error("异常类型: {}", e.getClass().getName());
+            String errorMessage = e.getMessage();
+            if (errorMessage == null) {
+                errorMessage = "未知错误，请查看服务器日志获取详细信息";
+                log.error("异常消息为null，使用默认错误信息");
+            }
+            return Result.error("向量化失败: " + errorMessage);
+        } finally {
+            log.info("=== 向量化流程结束 ===");
         }
     }
 

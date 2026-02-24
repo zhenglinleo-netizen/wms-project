@@ -17,6 +17,36 @@ export const useMaterialStore = defineStore('material', {
     showDetail(material) {
       this.currentMaterial = material
       this.detailDialogVisible = true
+      
+      // 自动加载推荐内容
+      if (material && material.id) {
+        // 导入需要的函数
+        import('@/api/product').then(({ recommendProducts }) => {
+          // 加载相似辅料
+          recommendProducts(material.id).then(res => {
+            if (res.code === 200 && res.data) {
+              // 导入图片处理函数
+              import('@/utils/imageProcessor').then(({ getProcessedImageUrl }) => {
+                // 处理推荐辅料的图片URL
+                const similarMaterials = res.data.map((prod) => {
+                  const processedImage = getProcessedImageUrl(prod)
+                  return {
+                    ...prod,
+                    image: processedImage,
+                    similarity: prod.similarity
+                  }
+                })
+                this.setSimilarMaterials(similarMaterials)
+              })
+            } else {
+              this.setSimilarMaterials([])
+            }
+          }).catch(error => {
+            console.error('加载相似辅料失败:', error)
+            this.setSimilarMaterials([])
+          })
+        })
+      }
     },
     
     // 隐藏辅料详情对话框

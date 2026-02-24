@@ -21,6 +21,9 @@ public class MilvusConfig {
                 .withHost(host)
                 .withPort(port)
                 .build();
-        return new MilvusServiceClient(connectParam);
+        
+        MilvusServiceClient client = new MilvusServiceClient(connectParam);
+        
+        return client;
     }
 }

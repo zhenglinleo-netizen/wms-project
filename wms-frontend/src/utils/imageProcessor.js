@@ -13,7 +13,22 @@ export const processImageUrl = (url) => {
   // 过滤掉错误的图片URL（如"上传成功"）
   if (url === '上传成功' || url === '[]') {
     return null
-  } else if (url.startsWith('http')) {
+  }
+  
+  // 检查是否已经是完整的图片获取URL
+  if (url.includes('/file/get-image?filename=') || url.includes('/api/file/get-image?filename=')) {
+    // 提取实际的文件名
+    const filenameMatch = url.match(/filename=([^&]+)/)
+    if (filenameMatch && filenameMatch[1]) {
+      const filename = filenameMatch[1]
+      // 构建正确的URL格式
+      return `/file/get-image?filename=${filename}`
+    }
+    return url
+  }
+  
+  // 处理HTTP开头的URL
+  if (url.startsWith('http')) {
     // 提取文件名（忽略bucket名称）
     const lastSlashIndex = url.lastIndexOf('/')
     if (lastSlashIndex !== -1) {
@@ -24,8 +39,11 @@ export const processImageUrl = (url) => {
       // 如果无法提取文件名，尝试直接使用整个URL
       return `/file/get-image?filename=${url}`
     }
-  } else if (!url.startsWith('/file/get-image')) {
-    // 如果不是http开头也不是/file/get-image格式，直接使用文件名
+  }
+  
+  // 处理其他情况
+  if (!url.startsWith('/file/get-image') && !url.startsWith('/api/file/get-image')) {
+    // 如果不是http开头也不是/file/get-image或/api/file/get-image格式，直接使用文件名
     return `/file/get-image?filename=${url}`
   }
   
@@ -43,15 +61,15 @@ export const getProcessedImageUrl = (material) => {
     return ''
   }
   
-  // 优先处理imageUrl字段（后端返回的字段）
-  if (material.imageUrl) {
-    const processed = processImageUrl(material.imageUrl)
+  // 优先处理image字段（前端处理后存储的字段）
+  if (material.image) {
+    const processed = processImageUrl(material.image)
     if (processed) return processed
   }
   
-  // 处理image字段（前端处理后存储的字段）
-  if (material.image) {
-    const processed = processImageUrl(material.image)
+  // 处理imageUrl字段（后端返回的字段）
+  if (material.imageUrl) {
+    const processed = processImageUrl(material.imageUrl)
     if (processed) return processed
   }
   

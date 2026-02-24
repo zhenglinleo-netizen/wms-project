@@ -99,7 +99,7 @@
           <div class="hot-materials">
             <div v-for="item in hotMaterials" :key="item.id" class="material-item">
               <el-image 
-                :src="item.image || ''" 
+                :src="getProcessedImageUrl(item)" 
                 fit="cover" 
                 class="material-img"
                 :alt="item.name"
@@ -252,6 +252,7 @@ import { getProductList } from '@/api/product'
 import { getInventoryList } from '@/api/inventory'
 import { getProjectList } from '@/api/project'
 import { getRequirementList } from '@/api/requirement'
+import { getProcessedImageUrl } from '@/utils/imageProcessor'
 import { List, Warning, Document, Money, Clock, Picture } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -424,7 +425,7 @@ onMounted(async () => {
         id: p.id,
         name: p.productName,
         price: p.price,
-        image: 'https://via.placeholder.com/80', // 暂时没有图片字段
+        image: p.image || p.imageUrl || p.images, // 使用真实的图片字段
         stock: inventory.data?.find(i => i.productId === p.id)?.quantity || 0
       }))
     }
