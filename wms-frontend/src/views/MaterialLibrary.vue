@@ -1046,7 +1046,6 @@ watch(sortBy, () => {
 
 // AI Recognition
 const aiDialogVisible = ref(false)
-const activeTab = ref('result')
 const isRecognizing = ref(false)
 const recognitionResult = ref(null)
 const uploadedFiles = ref([])
@@ -1609,10 +1608,7 @@ const searchImageResult = ref(null)
 const detailPopover = ref(null)
 
 
-// Upload more images dialog
-const uploadMoreImagesDialog = ref(false)
-const moreImagesFiles = ref([])
-const isUploadingMoreImages = ref(false)
+
 
 // Edit dialog
 const editDialogVisible = ref(false)
@@ -2088,83 +2084,7 @@ const showDetail = async (item, event) => {
   materialStore.showDetail(item)
 }
 
-// 打开上传更多图片对话框
-const openUploadMoreImagesDialog = () => {
-  moreImagesFiles.value = []
-  uploadMoreImagesDialog.value = true
-}
 
-// 处理更多图片上传
-const handleMoreImagesUpload = async () => {
-  if (!currentMaterial.value) return
-  
-  if (moreImagesFiles.value.length === 0) {
-    ElMessage.warning('请先选择要上传的图片')
-    return
-  }
-  
-  isUploadingMoreImages.value = true
-  
-  try {
-    // 准备要上传的文件
-    const files = moreImagesFiles.value.map(file => file.raw)
-    
-    // 上传文件到MinIO
-    const uploadRes = await uploadMultipleFiles(files)
-    
-    if (uploadRes.code !== 200) {
-      throw new Error('文件上传失败: ' + uploadRes.message)
-    }
-    
-    const newFileUrls = uploadRes.data
-    
-    // 获取当前辅料的图片列表
-    let currentImages = []
-    if (currentMaterial.value.images) {
-      try {
-        currentImages = JSON.parse(currentMaterial.value.images)
-      } catch (e) {
-        currentImages = []
-      }
-    }
-    
-    // 合并新上传的图片URL
-    const updatedImages = [...currentImages, ...newFileUrls]
-    
-    // 更新辅料信息
-    const updatedMaterial = {
-      ...currentMaterial.value,
-      images: JSON.stringify(updatedImages)
-    }
-    
-    // 更新辅料信息（使用updateProduct而不是saveProduct）
-    await updateProduct(updatedMaterial)
-    
-    // 更新当前辅料数据
-    currentMaterial.value = updatedMaterial
-    
-    // 显示成功提示
-    ElMessage.success('图片上传成功')
-    
-    // 关闭对话框
-    uploadMoreImagesDialog.value = false
-  } catch (error) {
-    console.error('上传更多图片失败:', error)
-    ElMessage.error('上传更多图片失败，请稍后重试')
-  } finally {
-    isUploadingMoreImages.value = false
-  }
-}
-
-// 处理更多图片文件选择
-const handleMoreImagesFileChange = (file, fileList) => {
-  moreImagesFiles.value = fileList
-}
-
-// 处理更多图片文件移除
-const handleMoreImagesFileRemove = (file, fileList) => {
-  moreImagesFiles.value = fileList
-}
 
 
 

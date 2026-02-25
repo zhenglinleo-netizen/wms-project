@@ -64,6 +64,17 @@
           </div>
         </div>
         <div class="header-right">
+          <!-- 通知图标 -->
+          <div class="notification-icon" style="margin-right: 20px;">
+            <Notification
+              :user-id="userStore.user?.id"
+              :notices="notices"
+              :unread-count="unreadCount"
+              @refresh="handleRefreshNotifications"
+              @notice-click="handleNoticeClick"
+              @load-more="handleLoadMoreNotifications"
+            />
+          </div>
           <el-dropdown trigger="hover" class="user-dropdown">
             <div class="user-info">
               <el-avatar :size="32" :icon="UserFilled" class="user-avatar" />
@@ -477,7 +488,7 @@ import { recommendProducts } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
 import { getInventoryList } from '@/api/inventory'
 import { uploadMultipleFiles } from '@/api/file'
-import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis, Delete } from '@element-plus/icons-vue'
+import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis, Delete, BellFilled } from '@element-plus/icons-vue'
 import { processImageUrl, getProcessedImageUrl, getImagePreviewList } from '@/utils/imageProcessor'
 
 const route = useRoute()
@@ -598,6 +609,11 @@ const menuItems = [
     index: '/data-analysis',
     icon: PieChart,
     title: '数据分析与报表'
+  },
+  {
+    index: '/notification-center',
+    icon: BellFilled,
+    title: '消息中心'
   },
   {
     index: '/system-management',
@@ -781,6 +797,38 @@ const handleClickOutside = (event) => {
   }
 }
 
+// 通知相关
+const notices = ref([])
+const unreadCount = ref(0)
+
+const handleRefreshNotifications = () => {
+  // 刷新通知列表
+  loadNotifications()
+}
+
+const handleNoticeClick = (notice) => {
+  // 处理通知点击
+  console.log('Notice clicked:', notice)
+}
+
+const handleLoadMoreNotifications = () => {
+  // 加载更多通知
+  console.log('Load more notifications')
+}
+
+const loadNotifications = async () => {
+  try {
+    const { getNoticeList } = await import('@/api/notice')
+    const response = await getNoticeList(userStore.user?.id || 0, 10)
+    if (response.code === 200) {
+      notices.value = response.data || []
+      unreadCount.value = notices.value.filter(notice => notice.isRead === 0).length
+    }
+  } catch (error) {
+    console.error('加载通知失败:', error)
+  }
+}
+
 // 页面加载时执行
 onMounted(() => {
   // 加载菜单状态
@@ -792,6 +840,9 @@ onMounted(() => {
   
   // 加载收藏数据
   loadFavorites()
+  
+  // 加载通知
+  loadNotifications()
 })
 
 // 加载收藏数据

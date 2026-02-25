@@ -96,6 +96,12 @@ const routes = [
             meta: { title: '供需关系管理' }
           }
         ]
+      },
+      {
+        path: 'notification-center',
+        name: 'NotificationCenter',
+        component: () => import('@/views/NotificationCenter.vue'),
+        meta: { title: '消息中心' }
       }
     ]
   }
