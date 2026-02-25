@@ -61,4 +61,11 @@ public interface MilvusService {
      * @return Map of material IDs to similarity scores
      */
     Map<Long, Float> getSimilarMaterials(String collectionName, List<Float> vector, int topK);
+
+    /**
+     * Delete vector by ID
+     * @param collectionName The name of the collection
+     * @param id The ID of the vector to delete
+     */
+    void deleteById(String collectionName, Long id);
 }

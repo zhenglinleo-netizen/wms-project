@@ -55,6 +55,10 @@
         SELECT COUNT(*) FROM sys_user WHERE role = 'admin'
     </select>
 
+    <select id="selectAdmins" resultMap="BaseResultMap">
+        SELECT * FROM sys_user WHERE role = 'admin' AND status = 1
+    </select>
+
 </mapper>
 
 

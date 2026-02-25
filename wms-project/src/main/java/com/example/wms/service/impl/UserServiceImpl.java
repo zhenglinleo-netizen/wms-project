@@ -104,4 +104,9 @@ public class UserServiceImpl implements UserService {
         }
         return userMapper.deleteById(id);
     }
+
+    @Override
+    public List<User> getAdmins() {
+        return userMapper.selectAdmins();
+    }
 }

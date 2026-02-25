@@ -20,6 +20,7 @@ import com.example.wms.service.RequirementService;
 import com.example.wms.service.SchemeItemService;
 import com.example.wms.service.SchemeService;
 import com.example.wms.service.PurchaseOrderService;
+import com.example.wms.service.NoticeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +61,9 @@ public class RequirementServiceImpl implements RequirementService {
 
     @Autowired
     private PurchaseOrderService purchaseOrderService;
+
+    @Autowired
+    private NoticeService noticeService;
 
     @Override
     public Result<java.util.Map<String, Object>> getRequirementList(String keyword, String status, String priority, Long creatorId, Integer page, Integer pageSize) {
@@ -357,6 +361,11 @@ public class RequirementServiceImpl implements RequirementService {
             audit.setStatus("pending");
             requirementAuditMapper.insert(audit);
             
+            // 发送通知给所有管理员
+            String title = "采购需求审核通知";
+            String content = "用户提交了采购需求，需求单号：" + requirement.getRequirementCode() + "，请及时审核。";
+            noticeService.sendNoticeToAdmins(title, content, "requirement_audit", id);
+            
             return Result.success(null);
         } catch (Exception e) {
             e.printStackTrace();
@@ -503,6 +512,12 @@ public class RequirementServiceImpl implements RequirementService {
             audit.setSubmittedAt(new Date());
             audit.setStatus("pending");
             negotiationAuditMapper.insert(audit);
+            
+            // 发送通知给所有管理员
+            Requirement requirementDetail = requirementMapper.selectById(requirementId);
+            String title = "议价审核通知";
+            String content = "用户提交了议价审核，需求单号：" + requirementDetail.getRequirementCode() + "，请及时审核。";
+            noticeService.sendNoticeToAdmins(title, content, "negotiation_audit", requirementId);
             
             // 暂时不更新需求明细和总价，等待审核通过后再更新
             

@@ -13,4 +13,5 @@ public interface UserMapper {
     int update(User user);
     int deleteById(Long id);
     int countAdmins();
+    List<User> selectAdmins();
 }

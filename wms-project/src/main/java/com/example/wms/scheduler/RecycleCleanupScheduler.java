@@ -3,6 +3,7 @@ package com.example.wms.scheduler;
 import com.example.wms.entity.Product;
 import com.example.wms.mapper.ProductMapper;
 import com.example.wms.service.MinioService;
+import com.example.wms.service.MilvusService;
 import com.example.wms.utils.CacheManager;
 import com.example.wms.utils.CacheKeyUtil;
 import org.slf4j.Logger;
@@ -29,6 +30,9 @@ public class RecycleCleanupScheduler {
 
     @Autowired
     private MinioService minioService;
+
+    @Autowired
+    private MilvusService milvusService;
 
     @Autowired
     private CacheManager cacheManager;
@@ -99,6 +103,15 @@ public class RecycleCleanupScheduler {
     private void cleanupProduct(Product product) {
         // 删除相关图片
         deleteProductImages(product);
+
+        // 删除Milvus中的向量数据
+        try {
+            milvusService.deleteById("materials", product.getId());
+            logger.info("删除Milvus向量数据成功: ID={}", product.getId());
+        } catch (Exception e) {
+            logger.warn("删除Milvus向量数据失败: {}", e.getMessage());
+            // Milvus删除失败不影响产品删除
+        }
 
         // 从数据库中删除
         int result = productMapper.deleteById(product.getId());

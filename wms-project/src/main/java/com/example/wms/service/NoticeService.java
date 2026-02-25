@@ -22,4 +22,6 @@ public interface NoticeService {
     int deleteNotice(Long id);
     
     void sendNoticeToQueue(Notice notice);
+    
+    void sendNoticeToAdmins(String title, String content, String type, Long relatedId);
 }

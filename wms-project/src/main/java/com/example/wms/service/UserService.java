@@ -13,5 +13,6 @@ public interface UserService {
     int saveUser(User user);
     int updateUser(User user);
     int deleteUser(Long id);
+    List<User> getAdmins();
 }
 

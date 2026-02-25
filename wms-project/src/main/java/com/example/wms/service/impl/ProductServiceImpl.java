@@ -6,6 +6,7 @@ import com.example.wms.mapper.ProductMapper;
 import com.example.wms.mapper.MaterialCategoryMapper;
 import com.example.wms.service.ProductService;
 import com.example.wms.service.MinioService;
+import com.example.wms.service.MilvusService;
 import com.example.wms.utils.CacheKeyUtil;
 import com.example.wms.utils.CacheManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,8 @@ public class ProductServiceImpl implements ProductService {
     private CacheManager cacheManager;
     @Autowired
     private MinioService minioService;
+    @Autowired
+    private MilvusService milvusService;
 
     @Override
     public List<Product> getAllProducts() {
@@ -234,6 +237,15 @@ public class ProductServiceImpl implements ProductService {
                         logger.warning("处理多图删除失败: " + e.getMessage());
                         // 图片删除失败不影响产品删除
                     }
+                }
+                
+                // 删除Milvus中的向量数据
+                try {
+                    milvusService.deleteById("materials", id);
+                    logger.info("删除Milvus向量数据成功: ID=" + id);
+                } catch (Exception e) {
+                    logger.warning("删除Milvus向量数据失败: " + e.getMessage());
+                    // Milvus删除失败不影响产品删除
                 }
             }
             logger.info("永久删除辅料成功: ID=" + id);

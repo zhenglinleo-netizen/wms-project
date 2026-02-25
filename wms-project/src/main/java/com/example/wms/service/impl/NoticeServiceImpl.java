@@ -3,6 +3,8 @@ package com.example.wms.service.impl;
 import com.example.wms.entity.Notice;
 import com.example.wms.mapper.NoticeMapper;
 import com.example.wms.service.NoticeService;
+import com.example.wms.service.UserService;
+import com.example.wms.entity.User;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -21,6 +23,9 @@ public class NoticeServiceImpl implements NoticeService {
     
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    
+    @Autowired
+    private UserService userService;
     
     private static final String NOTICE_QUEUE = "notice.queue";
     private static final String UNREAD_COUNT_KEY_PREFIX = "notice:unread:";
@@ -93,5 +98,25 @@ public class NoticeServiceImpl implements NoticeService {
     @Override
     public void sendNoticeToQueue(Notice notice) {
         rabbitTemplate.convertAndSend(NOTICE_QUEUE, notice);
+    }
+
+    @Override
+    public void sendNoticeToAdmins(String title, String content, String type, Long relatedId) {
+        // 获取所有管理员
+        List<User> admins = userService.getAdmins();
+        
+        // 为每个管理员创建通知
+        for (User admin : admins) {
+            Notice notice = new Notice();
+            notice.setTitle(title);
+            notice.setContent(content);
+            notice.setType(type);
+            notice.setUserId(admin.getId());
+            notice.setRelatedId(relatedId);
+            notice.setIsRead(0); // 0表示未读
+            
+            // 发送到消息队列
+            sendNoticeToQueue(notice);
+        }
     }
 }

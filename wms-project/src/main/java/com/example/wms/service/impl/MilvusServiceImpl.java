@@ -330,4 +330,34 @@ public class MilvusServiceImpl implements MilvusService {
 
         return materialScores;
     }
+
+    @Override
+    public void deleteById(String collectionName, Long id) {
+        try {
+            // 检查collection是否存在
+            if (!collectionExists(collectionName)) {
+                log.warn("Collection {} does not exist, skipping delete operation", collectionName);
+                return;
+            }
+
+            // 构建删除参数
+            io.milvus.param.dml.DeleteParam deleteParam = io.milvus.param.dml.DeleteParam.newBuilder()
+                    .withCollectionName(collectionName)
+                    .withExpr("id == " + id)
+                    .build();
+
+            // 执行删除操作
+            R<io.milvus.grpc.MutationResult> response = milvusClient.delete(deleteParam);
+            if (response.getStatus() != R.Status.Success.getCode()) {
+                log.error("Milvus delete failed: {}", response.getMessage());
+                throw new RuntimeException("Milvus delete failed: " + response.getMessage());
+            }
+
+            log.info("Successfully deleted vector with ID {} from collection {}", id, collectionName);
+        } catch (Exception e) {
+            log.error("Error deleting vector with ID {} from collection {}: {}", id, collectionName, e.getMessage(), e);
+            // 抛出异常，让调用方处理
+            throw new RuntimeException("Error deleting vector: " + e.getMessage(), e);
+        }
+    }
 }
