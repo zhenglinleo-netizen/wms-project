@@ -28,6 +28,19 @@
           </div>
         </el-card>
       </el-col>
+      <el-col :span="6" v-else>
+        <el-card class="stat-card">
+          <div class="stat-item">
+            <div class="stat-icon" style="background: #909399;">
+              <el-icon size="30"><Clock /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.personalTasks }}</div>
+              <div class="stat-label">个人待办任务</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-item">
@@ -201,6 +214,80 @@
           </div>
         </el-card>
       </el-col>
+      <!-- 个人项目进度概览 -->
+      <el-col :span="12" v-else>
+        <el-card class="dashboard-card">
+          <template #header>
+            <div class="card-header">
+              <span>个人项目进度概览</span>
+              <el-button text @click="goToProjectManagement">查看全部</el-button>
+            </div>
+          </template>
+          <div class="personal-projects">
+            <div v-for="project in activeProjects" :key="project.id" class="project-item card">
+              <div class="project-header">
+                <div class="project-name">{{ project.projectName }}</div>
+                <el-tag type="primary" class="project-status">{{ project.status }}</el-tag>
+              </div>
+              <div class="project-info">
+                <div class="project-client">客户: {{ project.clientName }}</div>
+                <div class="project-progress">
+                  <div class="progress-label">进度: {{ project.progress }}%</div>
+                  <el-progress :percentage="project.progress" :stroke-width="8" :show-text="false" />
+                </div>
+                <div class="project-deadline">
+                  <el-icon class="deadline-icon"><Clock /></el-icon>
+                  <span>截止日期: {{ project.endDate }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="activeProjects.length === 0" class="no-projects">
+              <el-empty description="暂无参与的项目" />
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 常用辅料 -->
+    <el-row v-if="userStore.user?.role !== 'admin'" style="margin-top: 20px;">
+      <el-col :span="24">
+        <el-card class="dashboard-card">
+          <template #header>
+            <div class="card-header">
+              <span>常用辅料</span>
+              <el-button text @click="goToMaterialLibrary">去辅料库</el-button>
+            </div>
+          </template>
+          <div class="hot-materials">
+            <div v-for="item in hotMaterials" :key="item.id" class="material-item">
+              <el-image 
+                :src="getProcessedImageUrl(item)" 
+                fit="cover" 
+                class="material-img"
+                :alt="item.name"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon class="image-icon"><Picture /></el-icon>
+                    <div class="image-text">无图片</div>
+                  </div>
+                </template>
+              </el-image>
+              <div class="material-info">
+                <div class="material-name">{{ item.name }}</div>
+                <div class="material-price">¥{{ item.price }}</div>
+                <div class="material-stock" :style="{ color: item.stock > 0 ? '#67c23a' : '#f56c6c' }">
+                  {{ item.stock > 0 ? '有库存' : '缺货' }}
+                </div>
+              </div>
+            </div>
+            <div v-if="hotMaterials.length === 0" class="no-materials">
+              <el-empty description="暂无常用辅料" />
+            </div>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
 
     <!-- 系统使用数据概览 -->
@@ -262,7 +349,8 @@ const stats = ref({
   pendingTasks: 5,
   inventoryAlerts: 2,
   activeProjects: 8,
-  monthlyPurchase: 12.5
+  monthlyPurchase: 12.5,
+  personalTasks: 3
 })
 
 const recentRequirements = ref([
@@ -446,6 +534,13 @@ onMounted(async () => {
       stats.value.activeProjects = 0
     }
     
+    // 更新个人待办任务统计
+    // 这里使用模拟数据，实际项目中应该从API获取
+    if (userStore.user?.role !== 'admin') {
+      // 模拟个人待办任务数量
+      stats.value.personalTasks = Math.floor(Math.random() * 5) + 1
+    }
+    
     // 更新待办任务统计 - 暂时使用Mock数据
     // stats.value.pendingTasks = 计算真实待办任务数量
   } catch (e) {
@@ -454,6 +549,9 @@ onMounted(async () => {
     recentRequirements.value = []
     activeProjects.value = []
     stats.value.activeProjects = 0
+    if (userStore.user?.role !== 'admin') {
+      stats.value.personalTasks = 0
+    }
   }
 })
 </script>
@@ -798,6 +896,103 @@ onMounted(async () => {
 
 .no-alerts {
   text-align: center;
+  padding: 40px 0;
+}
+
+/* 个人项目进度概览 */
+.personal-projects {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 0;
+  overflow: auto;
+}
+
+.personal-projects .project-item.card {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.personal-projects .project-item.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  border-color: #d9e8f4;
+}
+
+.personal-projects .project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.personal-projects .project-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 70%;
+}
+
+.personal-projects .project-status {
+  font-size: 11px;
+}
+
+.personal-projects .project-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.personal-projects .project-client {
+  font-size: 13px;
+  color: #606266;
+}
+
+.personal-projects .project-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.personal-projects .progress-label {
+  font-size: 13px;
+  color: #606266;
+}
+
+.personal-projects .project-deadline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.personal-projects .deadline-icon {
+  color: #e6a23c;
+  font-size: 14px;
+}
+
+.personal-projects .no-projects {
+  text-align: center;
+  padding: 30px 0;
+}
+
+/* 常用辅料 */
+.no-materials {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden !important;
   padding: 40px 0;
 }
 </style>

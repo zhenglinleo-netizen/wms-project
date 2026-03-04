@@ -5,16 +5,14 @@ import com.example.wms.entity.Product;
 import com.example.wms.service.MilvusService;
 import com.example.wms.service.MultimodalEmbeddingService;
 import com.example.wms.service.ProductService;
+import com.example.wms.service.UserBehaviorService;
 import io.milvus.param.MetricType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @RestController
@@ -29,6 +27,9 @@ public class RecommendationController {
 
     @Autowired
     private MultimodalEmbeddingService multimodalEmbeddingService;
+
+    @Autowired
+    private UserBehaviorService userBehaviorService;
 
     private static final String COLLECTION_NAME = "materials";
     private static final int VECTOR_DIMENSION = 2048; // 千问多模态向量维度
@@ -113,6 +114,46 @@ public class RecommendationController {
         } catch (Exception e) {
             log.error("Image-based recommendation failed: {}", e.getMessage(), e);
             return Result.error("推荐失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 以图搜图 - 搜索相似辅料（支持参数配置）
+     * @param file 上传的图片文件
+     * @param limit 返回结果数量限制，默认 10
+     * @param threshold 相似度阈值，默认 0.6（60%）
+     * @return 相似辅料列表
+     */
+    @PostMapping("/search-by-image")
+    public Result<List<Product>> searchByImage(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "limit", defaultValue = "10") Integer limit,
+            @RequestParam(value = "threshold", defaultValue = "0.6") Double threshold) {
+        try {
+            if (file == null || file.isEmpty()) {
+                return Result.error("文件不能为空");
+            }
+
+            log.info("Starting image search, limit={}, threshold={}", limit, threshold);
+
+            // 1. 多模态向量化
+            List<Float> imageVector = multimodalEmbeddingService.embedImage(file);
+            log.info("Image vectorization successful, dimension: {}", imageVector.size());
+
+            // 2. 在 Milvus 中搜索相似向量
+            List<List<Float>> queryVectors = Collections.singletonList(imageVector);
+            List<Product> similarProducts = searchSimilarProducts(queryVectors, null, limit);
+            
+            // 3. 过滤掉相似度低于阈值的结果
+            final float minSimilarity = threshold.floatValue();
+            similarProducts.removeIf(p -> p.getSimilarity() == null || p.getSimilarity() < minSimilarity);
+            
+            log.info("Found {} similar products (after filtering with threshold {})", similarProducts.size(), threshold);
+            return Result.success(similarProducts);
+
+        } catch (Exception e) {
+            log.error("Image search failed", e);
+            return Result.error("图片搜索失败：" + e.getMessage());
         }
     }
 
@@ -242,8 +283,100 @@ public class RecommendationController {
             return Result.success(recommendedProducts);
 
         } catch (Exception e) {
-            log.error("Multimodal recommendation failed: {}", e.getMessage(), e);
+            log.error("Multimodal recommendation failed", e);
             return Result.error("推荐失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 基于协同过滤的个性化推荐
+     * @param userId 用户ID
+     * @return 推荐辅料列表
+     */
+    @GetMapping("/collaborative-recommend")
+    public Result<List<Product>> collaborativeRecommend(@RequestParam Long userId) {
+        try {
+            log.info("Generating collaborative filtering recommendations for user: {}", userId);
+
+            List<Product> recommendedProducts = new ArrayList<>();
+
+            // 1. 基于协同过滤获取推荐
+            List<Long> recommendedMaterialIds = userBehaviorService.getRecommendedMaterials(userId);
+
+            if (recommendedMaterialIds != null && !recommendedMaterialIds.isEmpty()) {
+                // 获取推荐辅料的详细信息
+                for (Long materialId : recommendedMaterialIds) {
+                    if (recommendedProducts.size() >= 10) break;
+                    Product product = productService.getProductById(materialId);
+                    if (product != null && product.getStatus() == 1) {
+                        product.setSimilarity(1.0f);
+                        recommendedProducts.add(product);
+                    }
+                }
+            }
+
+            // 2. 如果协同过滤结果不足，混合向量相似度推荐
+            if (recommendedProducts.size() < 5) {
+                List<Product> allProducts = productService.getAllProducts();
+                if (allProducts != null && !allProducts.isEmpty()) {
+                    Set<Long> existingIds = new HashSet<>();
+                    for (Product p : recommendedProducts) {
+                        existingIds.add(p.getId());
+                    }
+
+                    // 获取用户最近浏览/收藏的辅料
+                    List<Long> userRecentMaterials = new ArrayList<>();
+                    try {
+                        List<Long> similarUsers = userBehaviorService.getSimilarUsers(userId);
+                        if (!similarUsers.isEmpty()) {
+                            userRecentMaterials = userBehaviorService.getRecommendedMaterials(userId);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to get user behavior data: {}", e.getMessage());
+                    }
+
+                    // 随机补充推荐
+                    List<Product> candidates = new ArrayList<>(allProducts);
+                    candidates.removeIf(p -> existingIds.contains(p.getId()) || p.getStatus() != 1);
+                    Collections.shuffle(candidates);
+
+                    int needed = 5 - recommendedProducts.size();
+                    for (Product p : candidates) {
+                        if (needed <= 0) break;
+                        p.setSimilarity(0.5f);
+                        recommendedProducts.add(p);
+                        needed--;
+                    }
+                }
+            }
+
+            log.info("Returning {} collaborative recommendations for user {}", recommendedProducts.size(), userId);
+            return Result.success(recommendedProducts);
+
+        } catch (Exception e) {
+            log.error("Collaborative filtering recommendation failed", e);
+            return Result.success(new ArrayList<>());
+        }
+    }
+
+    /**
+     * 记录用户行为
+     * @param userId 用户ID
+     * @param materialId 辅料ID
+     * @param behaviorType 行为类型：browse, favorite, add_to_scheme, purchase
+     * @return 操作结果
+     */
+    @PostMapping("/record-behavior")
+    public Result<String> recordBehavior(
+            @RequestParam Long userId,
+            @RequestParam Long materialId,
+            @RequestParam String behaviorType) {
+        try {
+            userBehaviorService.recordBehavior(userId, materialId, behaviorType);
+            return Result.success("行为记录成功");
+        } catch (Exception e) {
+            log.error("Failed to record user behavior", e);
+            return Result.error("记录失败: " + e.getMessage());
         }
     }
 }

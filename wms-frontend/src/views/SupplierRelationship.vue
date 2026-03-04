@@ -32,6 +32,8 @@
                 fit="cover" 
                 class="material-image"
                 :alt="material.productName"
+                :preview-src-list="material.thumbnail ? [material.thumbnail] : []"
+                :preview-teleported="true"
               >
                 <template #error>
                   <div class="image-error">
@@ -196,6 +198,7 @@
         </span>
       </template>
     </el-dialog>
+
   </div>
 </template>
 
@@ -204,6 +207,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Edit, Delete, Link, Picture } from '@element-plus/icons-vue'
 import { getSupplierProducts, createSupplierProduct, updateSupplierProduct, deleteSupplierProduct, getSuppliers, getMaterials } from '@/api/supplier'
+import { getProcessedImageUrl } from '@/utils/imageProcessor'
 
 // 数据
 const relationships = ref([])
@@ -275,22 +279,11 @@ const loadMaterials = async () => {
   try {
     const response = await getMaterials()
     materials.value = response.data.map(item => {
-      let imageUrl = item.imageUrl
-      // 过滤掉错误的图片URL（如"上传成功"）
-      if (!imageUrl || imageUrl === '上传成功' || imageUrl === '[]' || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
-        imageUrl = null
-      } else {
-        // 提取文件名（忽略bucket名称）
-        const lastSlashIndex = imageUrl.lastIndexOf('/')
-        if (lastSlashIndex !== -1) {
-          let filename = imageUrl.substring(lastSlashIndex + 1)
-          // 使用后端接口获取图片，避免MinIO认证问题
-          imageUrl = `/api/file/get-image?filename=${filename}`
-        }
-      }
+      // 使用图片处理工具函数处理图片URL
+      const processedImageUrl = getProcessedImageUrl(item)
       return {
         ...item,
-        thumbnail: imageUrl // 确保thumbnail字段可用
+        thumbnail: processedImageUrl // 确保thumbnail字段可用
       }
     })
   } catch (error) {

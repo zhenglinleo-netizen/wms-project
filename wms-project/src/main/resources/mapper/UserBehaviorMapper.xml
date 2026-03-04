@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.wms.mapper.UserBehaviorMapper">
+
+    <insert id="insert" parameterType="com.example.wms.entity.UserBehavior" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_behavior (user_id, material_id, behavior_type, weight, ip_address, user_agent, create_time)
+        VALUES (#{userId}, #{materialId}, #{behaviorType}, #{weight}, #{ipAddress}, #{userAgent}, #{createTime})
+    </insert>
+
+    <select id="selectByUserId" resultType="com.example.wms.entity.UserBehavior">
+        SELECT id, user_id as userId, material_id as materialId, behavior_type as behaviorType,
+               weight, ip_address as ipAddress, user_agent as userAgent, create_time as createTime
+        FROM user_behavior
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByMaterialId" resultType="com.example.wms.entity.UserBehavior">
+        SELECT id, user_id as userId, material_id as materialId, behavior_type as behaviorType,
+               weight, ip_address as ipAddress, user_agent as userAgent, create_time as createTime
+        FROM user_behavior
+        WHERE material_id = #{materialId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByUserIdAndType" resultType="com.example.wms.entity.UserBehavior">
+        SELECT id, user_id as userId, material_id as materialId, behavior_type as behaviorType,
+               weight, ip_address as ipAddress, user_agent as userAgent, create_time as createTime
+        FROM user_behavior
+        WHERE user_id = #{userId} AND behavior_type = #{behaviorType}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="countByUserIdAndMaterialId" resultType="int">
+        SELECT COUNT(*)
+        FROM user_behavior
+        WHERE user_id = #{userId} AND material_id = #{materialId} AND behavior_type = #{behaviorType}
+    </select>
+
+    <select id="getUsersWithSimilarBehavior" resultType="long">
+        SELECT DISTINCT user_id
+        FROM user_behavior
+        WHERE user_id != #{userId}
+          AND material_id IN
+        <foreach collection="materialIds" item="mid" open="(" separator="," close=")">
+            #{mid}
+        </foreach>
+        AND behavior_type IN ('favorite', 'add_to_scheme', 'purchase')
+    </select>
+
+    <select id="getMaterialsByUserIds" resultType="long">
+        SELECT DISTINCT material_id
+        FROM user_behavior
+        WHERE user_id IN
+        <foreach collection="userIds" item="uid" open="(" separator="," close=")">
+            #{uid}
+        </foreach>
+        AND user_id != #{excludeUserId}
+        AND behavior_type IN ('favorite', 'add_to_scheme', 'purchase')
+        GROUP BY material_id
+        ORDER BY COUNT(*) DESC
+    </select>
+
+</mapper>

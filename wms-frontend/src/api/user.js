@@ -1,10 +1,18 @@
 import request from '@/utils/request'
 
-export const login = (username, password) => {
+export const login = (account, password) => {
+  const data = { account, password }
+  console.log('发送登录请求:', data)
   return request({
     url: '/user/login',
     method: 'post',
-    data: { username, password }
+    data
+  }).then(response => {
+    console.log('登录请求成功:', response)
+    return response
+  }).catch(error => {
+    console.log('登录请求失败:', error)
+    throw error
   })
 }
 

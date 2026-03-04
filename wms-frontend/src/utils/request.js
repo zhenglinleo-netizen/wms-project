@@ -4,7 +4,10 @@ import router from '@/router'
 
 const service = axios.create({
   baseURL: '/api',
-  timeout: 30000
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
 service.interceptors.request.use(
@@ -15,13 +18,13 @@ service.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`
     }
     // 添加请求日志
-    console.log('发送请求:', {
-      url: config.url,
-      method: config.method,
-      timeout: config.timeout,
-      headers: config.headers,
-      data: config.data
-    });
+        console.log('发送请求:', {
+          url: config.url,
+          method: config.method,
+          timeout: config.timeout,
+          headers: config.headers,
+          data: JSON.stringify(config.data, null, 2)
+        });
     return config
   },
   error => {
@@ -59,6 +62,11 @@ service.interceptors.response.use(
     });
     // HTTP 状态码错误处理
     if (error.response) {
+      console.log('响应错误详情:', {
+        status: error.response.status,
+        headers: error.response.headers,
+        data: error.response.data
+      });
       if (error.response.status === 403) {
         ElMessage.warning('权限不足，需要管理员权限')
         return Promise.reject(error)
@@ -66,6 +74,9 @@ service.interceptors.response.use(
         ElMessage.warning('未登录或登录已过期，请重新登录')
         // 可以在这里跳转到登录页
         return Promise.reject(error)
+      } else if (error.response.status === 400) {
+        ElMessage.error('参数验证失败，请检查请求参数')
+        return Promise.reject(new Error('参数验证失败，请检查请求参数'))
       }
     }
     ElMessage.error(error.message || '网络错误')

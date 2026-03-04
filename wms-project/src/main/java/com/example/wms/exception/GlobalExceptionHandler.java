@@ -50,7 +50,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Object> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         e.printStackTrace();
-        return Result.error("参数验证失败，请检查请求参数");
+        // 获取具体的验证错误信息
+        String errorMessage = e.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
+                .collect(java.util.stream.Collectors.joining(", "));
+        return Result.error("参数验证失败: " + errorMessage);
     }
 }
 

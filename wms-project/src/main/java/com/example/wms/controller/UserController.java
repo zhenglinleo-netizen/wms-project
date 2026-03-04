@@ -9,11 +9,14 @@ import com.example.wms.dto.RegisterDTO;
 import com.example.wms.entity.User;
 import com.example.wms.service.UserService;
 import com.example.wms.util.JwtUtil;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
@@ -29,10 +32,21 @@ public class UserController {
      * 用户登录
      */
     @PostMapping("/login")
-    public Result<JwtResponse> login(@Valid @RequestBody LoginDTO loginDTO) {
-        User user = userService.login(loginDTO.getUsername(), loginDTO.getPassword());
+    public Result<JwtResponse> login(@Valid @RequestBody LoginDTO loginDTO, HttpServletRequest request) {
+        System.out.println("接收到登录请求: " + loginDTO);
+        
+        String account = loginDTO.getAccount();
+        String password = loginDTO.getPassword();
+        
+        System.out.println("账号: " + account);
+        System.out.println("密码: " + password);
+        
+        System.out.println("参数验证通过，开始登录: " + account);
+        User user = userService.login(account, password, request);
         if (user != null) {
+            System.out.println("登录成功: " + user.getUsername());
             if (user.getStatus() != 1) {
+                System.out.println("账户未审核或已被禁用: " + user.getStatus());
                 return Result.error("账户未审核或已被禁用，请联系管理员");
             }
             // 生成JWT token
@@ -41,7 +55,8 @@ public class UserController {
                     user.getRealName(), user.getCompany(), user.getRole());
             return Result.success("登录成功", jwtResponse);
         }
-        return Result.error("用户名或密码错误");
+        System.out.println("登录失败: 账号或密码错误");
+        return Result.error("账号或密码错误");
     }
 
     /**
@@ -61,7 +76,7 @@ public class UserController {
      * 修改密码
      */
     @PostMapping("/change-password")
-    public Result<String> changePassword(@RequestBody ChangePasswordDTO dto, 
+    public Result<String> changePassword(@Valid @RequestBody ChangePasswordDTO dto, 
                                          @RequestAttribute Long userId) {
         try {
             userService.changePassword(userId, dto.getOldPassword(), dto.getNewPassword());

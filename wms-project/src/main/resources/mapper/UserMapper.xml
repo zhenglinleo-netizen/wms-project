@@ -24,6 +24,14 @@
         SELECT * FROM sys_user WHERE username = #{username}
     </select>
 
+    <select id="selectByPhone" resultMap="BaseResultMap">
+        SELECT * FROM sys_user WHERE phone = #{phone}
+    </select>
+
+    <select id="selectByEmail" resultMap="BaseResultMap">
+        SELECT * FROM sys_user WHERE email = #{email}
+    </select>
+
     <select id="selectAll" resultMap="BaseResultMap">
         SELECT * FROM sys_user ORDER BY create_time DESC
     </select>

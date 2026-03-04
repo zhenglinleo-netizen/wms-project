@@ -8,6 +8,8 @@ import java.util.List;
 public interface UserMapper {
     User selectById(Long id);
     User selectByUsername(String username);
+    User selectByPhone(String phone);
+    User selectByEmail(String email);
     List<User> selectAll();
     int insert(User user);
     int update(User user);

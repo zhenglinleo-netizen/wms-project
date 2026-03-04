@@ -1,12 +1,14 @@
 <template>
-  <RouteTransition 
-    :default-transition="'fade'"
-    :duration="350"
-    :route-transitions="routeTransitions"
-    :custom-classes="customClasses"
-  >
-    <router-view />
-  </RouteTransition>
+  <router-view v-slot="{ Component }">
+    <RouteTransition 
+      :default-transition="'fade'"
+      :duration="350"
+      :route-transitions="routeTransitions"
+      :custom-classes="customClasses"
+    >
+      <component :is="Component" />
+    </RouteTransition>
+  </router-view>
 </template>
 
 <script setup>

@@ -91,7 +91,7 @@ dashscope:
   vector-dimension: 2048
 
 bailian:
-  api-key: user's API key
+  api-key: suser's API key
   api-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding
   model: qwen3-vl-embedding
   timeout: 30000

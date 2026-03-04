@@ -82,25 +82,25 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu class="custom-dropdown-menu">
-                <el-dropdown-item disabled class="user-details">
-                  <div class="user-detail-item">
+                  <el-dropdown-item disabled class="user-detail-item">
+                    <el-icon class="detail-icon"><OfficeBuilding /></el-icon>
                     <span class="label">所属公司：</span>
                     <span class="value">{{ userStore.user?.company || '未设置' }}</span>
-                  </div>
-                  <div class="user-detail-item">
+                  </el-dropdown-item>
+                  <el-dropdown-item disabled class="user-detail-item">
+                    <el-icon class="detail-icon"><UserFilled /></el-icon>
                     <span class="label">角色：</span>
                     <span class="value">{{ translateRole(userStore.user?.role) || '普通用户' }}</span>
-                  </div>
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="handleChangePassword" class="dropdown-action">
-                  <el-icon><Edit /></el-icon>
-                  <span>修改密码</span>
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout" class="dropdown-action">
-                  <el-icon><SwitchButton /></el-icon>
-                  <span>退出登录</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="handleChangePassword" class="user-detail-item">
+                    <el-icon class="detail-icon"><Edit /></el-icon>
+                    <span>修改密码</span>
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="handleLogout" class="user-detail-item">
+                    <el-icon class="detail-icon"><SwitchButton /></el-icon>
+                    <span>退出登录</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
@@ -163,7 +163,7 @@
       <el-dialog
         v-model="materialStore.detailDialogVisible"
         :title="materialStore.currentMaterial?.productName || '辅料详情'"
-        :width="'55%'"
+        :width="'45%'"
         :max-width="'1000px'"
         :close-on-click-modal="true"
         :close-on-press-escape="true"
@@ -306,11 +306,11 @@
               </el-button>
             </el-space>
             
-            <el-row v-if="materialStore.similarMaterials.length > 0" :gutter="10">
-              <el-col v-for="item in materialStore.similarMaterials" :key="item.id" :span="12">
+            <el-row v-if="materialStore.similarMaterials.filter(item => item.similarity > 0.65 && item.status === 1).length > 0" :gutter="10">
+              <el-col v-for="item in materialStore.similarMaterials.filter(item => item.similarity > 0.65 && item.status === 1)" :key="item.id" :span="12">
                 <el-card 
                   shadow="hover" 
-                  :body-style="{ padding: '10px' }"
+                  :body-style="{ padding: '15px' }"
                   @click="showDetail(item, false)"
                   style="cursor: pointer;"
                 >
@@ -318,30 +318,83 @@
                     v-if="item.image"
                     :src="item.image"
                     loading="lazy"
-                    fit="cover"
-                    style="width: 100%; height: 80px; border-radius: 4px; margin-bottom: 8px;"
+                    fit="contain"
+                    style="width: 100%; height: 200px; border-radius: 8px; margin-bottom: 12px; background-color: #f5f7fa;"
                     @click.stop
                   >
                     <template #error>
-                      <div style="width: 100%; height: 80px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 4px;">
-                        <el-empty description="暂无图片" :image-size="40" />
+                      <div style="width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px;">
+                        <el-empty description="暂无图片" :image-size="80" />
                       </div>
                     </template>
                   </el-image>
-                  <el-empty v-else description="暂无图片" :image-size="40" style="margin-bottom: 8px;" />
-                  <el-text :truncate="{ rows: 1 }" :strong="true" style="display: block; margin-bottom: 6px; font-size: 13px;">
+                  <div v-else style="width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px; margin-bottom: 12px;">
+                    <el-empty description="暂无图片" :image-size="80" />
+                  </div>
+                  <el-text :truncate="{ rows: 2 }" :strong="true" style="display: block; margin-bottom: 8px; font-size: 14px;">
                     {{ item.productName }}
                   </el-text>
                   <el-progress 
                     :percentage="item.similarity * 100" 
                     :format="() => `${(item.similarity * 100).toFixed(0)}%`" 
                     :size="'small'" 
-                    style="margin-bottom: 6px;"
+                    style="margin-bottom: 8px;"
+                    :stroke-width="8"
                   />
-                  <el-text type="danger" :strong="true" style="font-size: 14px;">
+                  <el-text type="danger" :strong="true" style="font-size: 16px;">
                     ¥{{ item.price.toFixed(2) }}
                   </el-text>
-                  <div style="margin-top: 8px; display: flex; justify-content: flex-end; gap: 6px;">
+                  <div style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                    <el-popover
+                      placement="top"
+                      :width="350"
+                      trigger="click"
+                    >
+                      <template #reference>
+                        <el-button 
+                          size="small" 
+                          type="info" 
+                          :icon="View"
+                          @click.stop
+                          title="查看详情"
+                        >
+                          详情
+                        </el-button>
+                      </template>
+                      <div style="padding: 15px;">
+                        <el-image 
+                          :src="item.image || 'https://via.placeholder.com/100'"
+                          fit="cover" 
+                          style="width: 100%; height: 150px; border-radius: 8px; margin-bottom: 15px;"
+                        />
+                        <el-text style="font-weight: 500; font-size: 16px;">{{ item.productName }}</el-text>
+                        <el-text type="danger" style="display: block; margin-top: 10px; font-size: 15px;">
+                          ¥{{ item.price.toFixed(2) }}
+                        </el-text>
+                        <el-text size="small" style="display: block; margin-top: 8px;">
+                          相似度: {{ (item.similarity * 100).toFixed(0) }}%
+                        </el-text>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                          <el-space direction="vertical" size="6">
+                            <el-text size="small">
+                              <span style="font-weight: 500;">分类:</span> {{ item.category || '未分类' }}
+                            </el-text>
+                            <el-text size="small">
+                              <span style="font-weight: 500;">材质:</span> {{ item.material || '未知' }}
+                            </el-text>
+                            <el-text size="small">
+                              <span style="font-weight: 500;">颜色:</span> {{ item.color || '未知' }}
+                            </el-text>
+                            <el-text size="small">
+                              <span style="font-weight: 500;">库存:</span> {{ item.stock || 0 }} {{ item.unit || '件' }}
+                            </el-text>
+                            <el-text size="small">
+                              <span style="font-weight: 500;">供应商:</span> {{ item.supplier || '未知' }}
+                            </el-text>
+                          </el-space>
+                        </div>
+                      </div>
+                    </el-popover>
                     <el-button 
                       size="small" 
                       type="primary" 
@@ -362,7 +415,7 @@
                 </el-card>
               </el-col>
             </el-row>
-            <el-empty v-else description="暂无相似辅料数据" :image-size="60" />
+            <el-empty v-else description="暂无相似度大于65%的辅料" :image-size="60" />
           </div>
           
           <!-- 推荐辅料 -->
@@ -448,30 +501,12 @@
       </el-dialog>
       
       <!-- 选择项目方案对话框 -->
-      <el-dialog v-model="projectSchemeDialogVisible" title="选择项目方案" width="500px" append-to-body>
-        <el-form :model="{}" label-width="80px">
-          <el-form-item label="选择项目" required>
-            <el-select v-model="selectedProject" placeholder="请选择项目" style="width: 100%" @change="handleProjectChange">
-              <el-option v-for="project in projectList" :key="project.id" :label="project.projectName" :value="project" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="选择方案" required>
-            <el-select v-model="selectedScheme" placeholder="请选择方案" style="width: 100%" :disabled="!selectedProject">
-              <el-option 
-                v-for="scheme in selectedProject?.schemes || []" 
-                :key="scheme.id" 
-                :label="`${scheme.schemeName} (${scheme.status})`" 
-                :value="scheme.id" 
-                :disabled="scheme.status === '已确定'"
-              />
-            </el-select>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="projectSchemeDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="addToProject">确定添加</el-button>
-        </template>
-      </el-dialog>
+      <ProjectSchemeDialog 
+        v-model:visible="materialStore.projectSchemeDialogVisible" 
+        :material="materialStore.currentMaterialForProject"
+        @add-success="handleAddSuccess"
+      />
+
     </el-container>
   </el-container>
 </template>
@@ -485,11 +520,12 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { changePassword } from '@/api/user'
 import { getMaterialList } from '@/api/material'
 import { recommendProducts } from '@/api/product'
-import { getProjectList, addMaterialToScheme } from '@/api/project'
+import { getProjectList, getSchemeListByProjectId, addMaterialToScheme } from '@/api/project'
 import { getInventoryList } from '@/api/inventory'
 import { uploadMultipleFiles } from '@/api/file'
-import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis, Delete, BellFilled } from '@element-plus/icons-vue'
+import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis, Delete, BellFilled, View } from '@element-plus/icons-vue'
 import { processImageUrl, getProcessedImageUrl, getImagePreviewList } from '@/utils/imageProcessor'
+import ProjectSchemeDialog from '../components/ProjectSchemeDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -507,12 +543,7 @@ const uploadMoreImagesDialog = ref(false)
 const moreImagesFiles = ref([])
 const isUploadingMoreImages = ref(false)
 
-// 项目方案对话框
-const projectSchemeDialogVisible = ref(false)
-const selectedProject = ref(null)
-const selectedScheme = ref(null)
-const projectList = ref([])
-const currentMaterialForProject = ref(null)
+// 项目方案对话框 - 状态已移至 material store 管理
 
 const activeMenu = computed(() => route.path)
 
@@ -900,22 +931,45 @@ const loadRecommendations = (item) => {
 // 加载相似辅料
 const loadSimilarMaterials = async (item) => {
   try {
-    const res = await recommendProducts(item.id)
+    // 并行获取相似辅料和库存数据
+    const [res, inventoryRes] = await Promise.all([
+      recommendProducts(item.id),
+      getInventoryList()
+    ])
     
     if (res.code === 200 && res.data) {
-      // Map backend products to frontend format
-      const similarMaterials = res.data.map((prod) => {
-        // Process image URL using the same logic as main materials
-        const processedImage = getProcessedImageUrl(prod)
-        
-        const processedMaterial = {
-          ...prod,
-          image: processedImage, // Use the same image processing logic
-          similarity: prod.similarity // Use real similarity score from backend
+      // 构建库存映射
+      const inventoryData = inventoryRes.data || []
+      const inventoryMap = new Map()
+      
+      inventoryData.forEach(inv => {
+        // 使用产品编码作为键，确保能正确匹配
+        const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
+        if (productCode) {
+          inventoryMap.set(productCode, inv)
         }
-        
-        return processedMaterial
       })
+      
+      // Map backend products to frontend format
+      const similarMaterials = res.data
+        .filter(prod => prod.status === 1) // 只保留上架状态的辅料
+        .map((prod) => {
+          // Process image URL using the same logic as main materials
+          const processedImage = getProcessedImageUrl(prod)
+          
+          // 获取库存数据
+          const inventory = inventoryMap.get(prod.productCode)
+          const stock = inventory ? (inventory.quantity || 0) : 0
+          
+          const processedMaterial = {
+            ...prod,
+            image: processedImage, // Use the same image processing logic
+            similarity: prod.similarity, // Use real similarity score from backend
+            stock: stock // Add stock information
+          }
+          
+          return processedMaterial
+        })
       
       materialStore.setSimilarMaterials(similarMaterials)
     } else {
@@ -1049,58 +1103,17 @@ const handleMoreImagesUpload = async () => {
   }
 }
 
-// 加载项目列表
-const loadProjects = async () => {
-  try {
-    // 获取当前登录用户ID
-    const userId = userStore.user?.id || 1
-    const res = await getProjectList({ userId })
-    if (res.code === 200) {
-      projectList.value = res.data
-    }
-  } catch (error) {
-    ElMessage.error('加载项目列表失败')
-  }
-}
-
 // 打开选择项目方案对话框
 const openProjectSchemeDialog = (item) => {
-  currentMaterialForProject.value = item
-  loadProjects()
-  projectSchemeDialogVisible.value = true
+  materialStore.showProjectSchemeDialog(item)
 }
 
-// 处理项目选择变化
-const handleProjectChange = () => {
-  selectedScheme.value = null
+// 处理添加成功
+const handleAddSuccess = () => {
+  // 可选：刷新项目方案列表
+  materialStore.hideProjectSchemeDialog()
 }
 
-// 添加辅料到项目方案
-const addToProject = async () => {
-  if (!selectedProject.value || !selectedScheme.value || !currentMaterialForProject.value) {
-    ElMessage.warning('请选择项目和方案')
-    return
-  }
-  
-  try {
-    const result = await addMaterialToScheme({
-      projectId: selectedProject.value.id,
-      schemeId: selectedScheme.value,
-      materialId: currentMaterialForProject.value.id
-    })
-    
-    if (result.code === 200) {
-      ElMessage.success('添加成功')
-      projectSchemeDialogVisible.value = false
-      // 可选：刷新项目方案列表
-    } else {
-      ElMessage.error(result.message || '添加失败')
-    }
-  } catch (error) {
-    console.error('添加辅料到项目方案失败:', error)
-    ElMessage.error('添加失败: ' + (error.message || '未知错误'))
-  }
-}
 </script>
 
 <style scoped>
@@ -1118,7 +1131,7 @@ const addToProject = async () => {
 /* 侧边栏 */
 .sidebar {
   background-color: #ffffff;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 0 24px 24px 0;
   box-shadow: 0 0 30px rgba(33, 150, 243, 0.12);
   border: 1px solid #e0f2fe;
@@ -1327,6 +1340,126 @@ const addToProject = async () => {
   transform: scaleX(1.2);
 }
 
+/* 用户下拉菜单样式 */
+.custom-dropdown-menu {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15) !important;
+  border: 1px solid #e0f2fe !important;
+  overflow: visible !important;
+  background: #ffffff !important;
+  min-width: 280px !important;
+  max-width: 400px !important;
+  width: max-content !important;
+}
+
+.user-detail-item {
+  display: flex !important;
+  align-items: center !important;
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+  margin: 4px 8px !important;
+  gap: 12px !important;
+}
+
+.user-detail-item:hover {
+  background-color: rgba(33, 150, 243, 0.08) !important;
+  transform: translateX(4px) !important;
+}
+
+.detail-icon {
+  font-size: 18px !important;
+  color: #1976d2 !important;
+  flex-shrink: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.15) 100%) !important;
+  border-radius: 6px !important;
+}
+
+.user-detail-item .label {
+  font-size: 14px !important;
+  color: #606266 !important;
+  font-weight: 500 !important;
+  flex-shrink: 0 !important;
+  min-width: 70px !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.user-detail-item .value {
+  font-size: 14px !important;
+  color: #1a1a1a !important;
+  font-weight: 600 !important;
+  flex: 1 !important;
+  text-align: left !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.user-detail-item:not(:has(.label)) {
+  justify-content: flex-start !important;
+  gap: 12px !important;
+}
+
+.user-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 12px !important;
+  border-radius: 12px !important;
+  transition: all 0.3s ease !important;
+  cursor: pointer !important;
+}
+
+.user-info:hover {
+  background-color: rgba(33, 150, 243, 0.08) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1) !important;
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%) !important;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.user-info:hover .user-avatar {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4) !important;
+}
+
+.welcome-text {
+  font-size: 14px !important;
+  color: #303133 !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.username-highlight {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  padding: 4px 8px !important;
+  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3) !important;
+}
+
+.user-info:hover .welcome-text {
+  color: #1976d2 !important;
+}
+
+.user-info:hover .username-highlight {
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4) !important;
+}
+
 /* 子菜单容器 */
 :deep(.el-sub-menu .el-menu) {
   background: transparent !important;
@@ -1349,11 +1482,118 @@ const addToProject = async () => {
   }
 }
 
+/* 菜单项悬停动画 */
+@keyframes menuItemHover {
+  0% {
+    transform: translateX(0) scale(1);
+    box-shadow: 0 0 0 rgba(33, 150, 243, 0);
+    opacity: 1;
+  }
+  10% {
+    transform: translateX(0.5px) scale(1.001);
+    box-shadow: 0 0.25px 0.75px rgba(33, 150, 243, 0.01);
+    opacity: 0.995;
+  }
+  25% {
+    transform: translateX(1px) scale(1.002);
+    box-shadow: 0 0.5px 1.5px rgba(33, 150, 243, 0.02);
+    opacity: 0.99;
+  }
+  40% {
+    transform: translateX(1.5px) scale(1.004);
+    box-shadow: 0 0.75px 2.25px rgba(33, 150, 243, 0.025);
+    opacity: 0.985;
+  }
+  50% {
+    transform: translateX(2px) scale(1.005);
+    box-shadow: 0 1px 3px rgba(33, 150, 243, 0.03);
+    opacity: 0.98;
+  }
+  60% {
+    transform: translateX(2.5px) scale(1.006);
+    box-shadow: 0 1.25px 3.75px rgba(33, 150, 243, 0.04);
+    opacity: 0.975;
+  }
+  75% {
+    transform: translateX(3px) scale(1.008);
+    box-shadow: 0 1.5px 4.5px rgba(33, 150, 243, 0.05);
+    opacity: 0.98;
+  }
+  90% {
+    transform: translateX(3.5px) scale(1.009);
+    box-shadow: 0 1.75px 5.25px rgba(33, 150, 243, 0.06);
+    opacity: 0.99;
+  }
+  100% {
+    transform: translateX(4px) scale(1.01);
+    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.07);
+    opacity: 1;
+  }
+}
+
+/* 菜单项激活动画 */
+@keyframes menuItemActive {
+  0% {
+    transform: translateX(0) scale(1);
+    box-shadow: 0 0 0 rgba(33, 150, 243, 0);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0) 100%);
+    opacity: 1;
+  }
+  10% {
+    transform: translateX(0.5px) scale(1.001);
+    box-shadow: 0 0.5px 1.5px rgba(33, 150, 243, 0.02);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.06) 0%, rgba(33, 150, 243, 0.02) 100%);
+    opacity: 0.995;
+  }
+  25% {
+    transform: translateX(1px) scale(1.002);
+    box-shadow: 0 1px 3px rgba(33, 150, 243, 0.04);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.07) 0%, rgba(33, 150, 243, 0.03) 100%);
+    opacity: 0.99;
+  }
+  40% {
+    transform: translateX(1.5px) scale(1.004);
+    box-shadow: 0 1.5px 4.5px rgba(33, 150, 243, 0.06);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.09) 0%, rgba(33, 150, 243, 0.04) 100%);
+    opacity: 0.985;
+  }
+  50% {
+    transform: translateX(2px) scale(1.005);
+    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.08);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.05) 100%);
+    opacity: 0.98;
+  }
+  60% {
+    transform: translateX(2.5px) scale(1.006);
+    box-shadow: 0 2.5px 7.5px rgba(33, 150, 243, 0.1);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.11) 0%, rgba(33, 150, 243, 0.06) 100%);
+    opacity: 0.985;
+  }
+  75% {
+    transform: translateX(3px) scale(1.008);
+    box-shadow: 0 3px 9px rgba(33, 150, 243, 0.12);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.13) 0%, rgba(33, 150, 243, 0.07) 100%);
+    opacity: 0.99;
+  }
+  90% {
+    transform: translateX(3.5px) scale(1.009);
+    box-shadow: 0 3.5px 10.5px rgba(33, 150, 243, 0.14);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.14) 0%, rgba(33, 150, 243, 0.075) 100%);
+    opacity: 0.995;
+  }
+  100% {
+    transform: translateX(4px) scale(1.01);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(33, 150, 243, 0.08) 100%);
+    opacity: 1;
+  }
+}
+
 /* 菜单图标 */
 .menu-icon {
   font-size: 20px;
   margin-right: 16px;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   color: #2196f3;
   position: relative;
   z-index: 1;
@@ -1367,7 +1607,7 @@ const addToProject = async () => {
 }
 
 .menu-icon:hover {
-  transform: scale(1.2) rotate(10deg);
+  transform: scale(1.15) rotate(5deg);
   background-color: rgba(33, 150, 243, 0.2);
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
 }
@@ -1375,7 +1615,7 @@ const addToProject = async () => {
 .sub-menu-icon {
   font-size: 18px;
   margin-right: 12px;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   color: #2196f3;
   position: relative;
   z-index: 1;
@@ -1389,7 +1629,7 @@ const addToProject = async () => {
 }
 
 .sub-menu-icon:hover {
-  transform: scale(1.1) rotate(5deg);
+  transform: scale(1.1) rotate(3deg);
   background-color: rgba(33, 150, 243, 0.15);
 }
 
@@ -1397,40 +1637,32 @@ const addToProject = async () => {
 :deep(.el-menu-item) {
   position: relative;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 12px !important;
   margin: 4px 12px !important;
   padding: 16px 20px !important;
   font-size: 14px !important;
   font-weight: 500 !important;
   color: #0d47a1 !important;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.02) 0%, rgba(33, 150, 243, 0) 100%) !important;
 }
 
 :deep(.el-menu-item:hover) {
-  background-color: rgba(33, 150, 243, 0.08) !important;
-  transform: translateX(8px) scale(1.02);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.12) 0%, rgba(33, 150, 243, 0.06) 100%) !important;
+  transform: translateX(6px) scale(1.015);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.15), 0 2px 8px rgba(33, 150, 243, 0.08);
 }
 
 :deep(.el-menu-item.is-active) {
-  background-color: rgba(33, 150, 243, 0.15) !important;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(33, 150, 243, 0.12) 100%) !important;
   color: #1976d2 !important;
   font-weight: 600 !important;
-  transform: translateX(8px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.15);
-  animation: menuItemActive 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform: translateX(6px) scale(1.015);
+  box-shadow: 0 8px 24px rgba(33, 150, 243, 0.2), 0 4px 12px rgba(33, 150, 243, 0.12);
 }
 
 :deep(.el-menu-item.is-active::before) {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
-  border-radius: 0 4px 4px 0;
-  animation: menuItemBorderSlide 0.4s ease-out;
+  display: none;
 }
 
 /* 子菜单项样式 */
@@ -1439,48 +1671,71 @@ const addToProject = async () => {
   padding: 12px 16px 12px 40px !important;
   font-size: 13px !important;
   border-radius: 8px !important;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 :deep(.el-sub-menu .el-menu-item:hover) {
-  transform: translateX(4px) scale(1.01);
+  transform: translateX(6px) scale(1.015);
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.12) 0%, rgba(33, 150, 243, 0.06) 100%) !important;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
 }
 
 :deep(.el-sub-menu .el-menu-item.is-active) {
-  transform: translateX(4px) scale(1.01);
+  transform: translateX(6px) scale(1.015);
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.18) 0%, rgba(33, 150, 243, 0.1) 100%) !important;
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.15), 0 2px 8px rgba(33, 150, 243, 0.08);
 }
 
 /* 子菜单标题样式 */
 :deep(.el-sub-menu__title) {
   position: relative;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  overflow: visible !important;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 12px !important;
   margin: 4px 12px !important;
   padding: 16px 20px !important;
   font-size: 14px !important;
   font-weight: 500 !important;
   color: #0d47a1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+
+:deep(.el-sub-menu__title .el-sub-menu__icon-arrow) {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+}
+
+:deep(.el-sub-menu__title .el-sub-menu__icon-arrow svg) {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+:deep(.el-sub-menu__title:hover .el-sub-menu__icon-arrow) {
+  transform: rotate(90deg) scale(1.15);
+  color: #1976d2;
+}
+
+:deep(.el-sub-menu.is-opened .el-sub-menu__icon-arrow) {
+  transform: rotate(90deg);
+  color: #1976d2;
 }
 
 :deep(.el-sub-menu__title:hover) {
-  background-color: rgba(33, 150, 243, 0.08) !important;
-  transform: translateX(8px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
+  background-color: rgba(33, 150, 243, 0.1) !important;
+  transform: translateX(6px);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.15), 0 2px 8px rgba(33, 150, 243, 0.08);
 }
 
 :deep(.el-sub-menu__title.is-active) {
-  background-color: rgba(33, 150, 243, 0.12) !important;
+  background-color: rgba(33, 150, 243, 0.15) !important;
   color: #1976d2 !important;
   font-weight: 600 !important;
-}
-
-/* 子菜单箭头动画 */
-:deep(.el-sub-menu__icon-arrow) {
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-  font-size: 16px !important;
-  align-self: center !important;
-  margin-top: 0 !important;
-  margin-left: auto !important;
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.15);
 }
 
 :deep(.el-sub-menu__title:hover .el-sub-menu__icon-arrow) {

@@ -22,8 +22,16 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/user/login",
                         "/user/register",
-                        "/user/forgot-password"
-                ); // 排除登录、注册、找回密码接口
+                        "/user/forgot-password",
+                        "/product/recommend/*",
+                        "/product/recommend-by-image",
+                        "/product/recommend-by-text",
+                        "/product/recommend-by-multimodal",
+                        "/product/search-by-image",
+                        "/product/collaborative-recommend",
+                        "/product/record-behavior",
+                        "/product/init-milvus"
+                );
     }
 }
 

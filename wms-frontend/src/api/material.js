@@ -114,19 +114,33 @@ export const recognizeMaterial = async (file) => {
   }
 }
 
-// Mock Search by Image
-export const searchByImage = (file) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        code: 200,
-        data: [
-          { id: 1, productName: '蓝色纯棉面料', price: 25, category: '面料' },
-          { id: 2, productName: '蓝色牛仔布', price: 30, category: '面料' }
-        ]
-      })
-    }, 1500)
-  })
+// Search by Image - 真实的 API 调用
+export const searchByImage = (file, limit = 10, threshold = 0.6) => {
+  try {
+    console.log('准备搜索图片，文件信息:', file);
+    console.log('limit:', limit, 'threshold:', threshold);
+    
+    const formData = new FormData()
+    formData.append('file', file.raw || file)
+    formData.append('limit', limit)
+    formData.append('threshold', threshold)
+    
+    console.log('FormData构建完成，文件字段:', formData.has('file'));
+    console.log('FormData limit:', formData.get('limit'));
+    console.log('FormData threshold:', formData.get('threshold'));
+    
+    return request({
+      url: '/product/search-by-image',
+      method: 'post',
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  } catch (error) {
+    console.error('searchByImage函数错误:', error);
+    throw error;
+  }
 }
 
 // Get Materials (wrapping Product API)

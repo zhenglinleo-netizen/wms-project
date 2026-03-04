@@ -45,6 +45,22 @@ export const recommendProducts = (id) => {
   })
 }
 
+export const collaborativeRecommend = (userId) => {
+  return request({
+    url: `/product/collaborative-recommend`,
+    method: 'get',
+    params: { userId }
+  })
+}
+
+export const recordBehavior = (userId, materialId, behaviorType) => {
+  return request({
+    url: `/product/record-behavior`,
+    method: 'post',
+    params: { userId, materialId, behaviorType }
+  })
+}
+
 
 
 

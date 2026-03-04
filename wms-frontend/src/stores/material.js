@@ -9,7 +9,11 @@ export const useMaterialStore = defineStore('material', {
     // 相似辅料推荐数据
     similarMaterials: [],
     // 推荐辅料数据
-    recommendations: []
+    recommendations: [],
+    // 项目方案对话框显示状态
+    projectSchemeDialogVisible: false,
+    // 当前要添加到项目方案的辅料
+    currentMaterialForProject: null
   }),
   
   actions: {
@@ -64,6 +68,18 @@ export const useMaterialStore = defineStore('material', {
     // 设置推荐辅料数据
     setRecommendations(materials) {
       this.recommendations = materials
+    },
+    
+    // 显示项目方案对话框
+    showProjectSchemeDialog(material) {
+      this.currentMaterialForProject = material
+      this.projectSchemeDialogVisible = true
+    },
+    
+    // 隐藏项目方案对话框
+    hideProjectSchemeDialog() {
+      this.projectSchemeDialogVisible = false
+      this.currentMaterialForProject = null
     }
   }
 })

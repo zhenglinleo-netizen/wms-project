@@ -82,13 +82,13 @@
       <!-- 智能功能按钮 -->
       <div style="margin-top: 20px;">
         <el-space size="medium">
-          <el-button type="warning" :icon="Camera" @click="openAIRecognition" round>
+          <el-button v-if="userStore.user?.role === 'admin'" type="warning" :icon="Camera" @click="openAIRecognition" round>
             AI 智能识别
           </el-button>
           <el-button type="info" :icon="Search" @click="openImageSearch" round>
             图片搜索
           </el-button>
-          <el-button type="success" :icon="Clock" @click="openAIHistory" round>
+          <el-button v-if="userStore.user?.role === 'admin'" type="success" :icon="Clock" @click="openAIHistory" round>
             识别历史
           </el-button>
           <el-button type="primary" :icon="Star" @click="toggleFavoritesView" round>
@@ -106,7 +106,7 @@
       <!-- 列表头部 -->
         <div style="margin: 20px 0; display: flex; justify-content: space-between; align-items: center;">
           <el-text :type="'primary'" :size="'large'">
-            {{ showRecommendations ? '推荐辅料' : showFavorites ? '我的收藏' : '辅料列表' }} ({{ materials.length }})
+            {{ showRecommendations ? '推荐列表' : showFavorites ? '我的收藏' : '辅料列表' }} ({{ materials.length }})
           </el-text>
         <el-space>
           <el-select v-model="sortBy" placeholder="排序方式" size="small">
@@ -552,43 +552,12 @@
                   </el-col>
                   <el-col :xs="24" :sm="12">
                     <el-form-item label="校正材质">
-                      <el-select v-model="correctionForm.material" placeholder="选择材质" @change="updateAuxiliaryName" style="width: 100%;">
-                        <el-option label="棉" value="棉" />
-                        <el-option label="麻" value="麻" />
-                        <el-option label="丝" value="丝" />
-                        <el-option label="毛" value="毛" />
-                        <el-option label="涤纶" value="涤纶" />
-                        <el-option label="混纺" value="混纺" />
-                        <el-option v-if="recognitionResult?.material" :label="recognitionResult.material" :value="recognitionResult.material">
-                          <template #default>
-                            <div style="display: flex; justify-content: space-between; width: 100%;">
-                              <span>{{ recognitionResult.material }}</span>
-                              <span style="color: #999; font-size: 12px;">AI识别</span>
-                            </div>
-                          </template>
-                        </el-option>
-                      </el-select>
+                      <el-input v-model="correctionForm.material" placeholder="输入材质，多个关键字用分号间隔" @change="updateAuxiliaryName" style="width: 100%;" />
                     </el-form-item>
                   </el-col>
                   <el-col :xs="24" :sm="12">
                     <el-form-item label="校正颜色">
-                      <el-select v-model="correctionForm.color" placeholder="选择颜色" @change="updateAuxiliaryName" style="width: 100%;">
-                        <el-option label="红色" value="红色" />
-                        <el-option label="蓝色" value="蓝色" />
-                        <el-option label="绿色" value="绿色" />
-                        <el-option label="黄色" value="黄色" />
-                        <el-option label="黑色" value="黑色" />
-                        <el-option label="白色" value="白色" />
-                        <el-option label="灰色" value="灰色" />
-                        <el-option v-if="recognitionResult?.color" :label="recognitionResult.color" :value="recognitionResult.color">
-                          <template #default>
-                            <div style="display: flex; justify-content: space-between; width: 100%;">
-                              <span>{{ recognitionResult.color }}</span>
-                              <span style="color: #999; font-size: 12px;">AI识别</span>
-                            </div>
-                          </template>
-                        </el-option>
-                      </el-select>
+                      <el-input v-model="correctionForm.color" placeholder="输入颜色，多个关键字用分号间隔" @change="updateAuxiliaryName" style="width: 100%;" />
                     </el-form-item>
                   </el-col>
                   <el-col :xs="24">
@@ -598,7 +567,32 @@
                   </el-col>
                   <el-col :xs="24">
                     <el-form-item label="校正风格">
-                      <el-input v-model="correctionForm.style" placeholder="输入风格关键词，如：优雅、浪漫、精致" style="width: 100%;" />
+                      <el-input v-model="correctionForm.style" placeholder="输入风格，多个关键字用分号间隔" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正辅料类别">
+                      <el-input v-model="correctionForm.auxiliaryCategory" placeholder="输入辅料类别" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正工艺大类">
+                      <el-input v-model="correctionForm.processCategory" placeholder="输入工艺大类，多个关键字用分号间隔" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正材料层">
+                      <el-input v-model="correctionForm.materialLayer" placeholder="输入材料层" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正效果层">
+                      <el-input v-model="correctionForm.effectLayer" placeholder="输入效果层" style="width: 100%;" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24">
+                    <el-form-item label="校正适用阶段">
+                      <el-input v-model="correctionForm.applicationStage" placeholder="输入适用阶段" style="width: 100%;" />
                     </el-form-item>
                   </el-col>
                   <el-col :xs="24">
@@ -617,33 +611,84 @@
             </el-card>
           </el-collapse-item>
           
-          <el-collapse-item title="🎯 相似辅料推荐" name="similar" v-if="recognitionResult.similar && recognitionResult.similar.length">
+          <el-collapse-item title="🎯 相似辅料推荐" name="similar">
             <el-card :body-style="{ padding: '20px' }">
-              <el-row :gutter="20">
-                <el-col :xs="24" :sm="12" :md="8" v-for="(item, index) in recognitionResult.similar" :key="index">
-                  <el-card shadow="hover" :body-style="{ padding: '15px' }" :class="'similar-material-card'">
-                    <el-image 
-                      :src="item.image || 'https://via.placeholder.com/100'"
-                      loading="lazy"
-                      fit="cover" 
-                      style="width: 100%; height: 120px; border-radius: 8px; margin-bottom: 12px;"
-                    />
-                    <el-text :truncate="{ rows: 1 }" style="font-weight: 500; font-size: 14px;">
-                      {{ item.name }}
-                    </el-text>
-                    <el-text type="danger" size="small" style="display: block; margin-top: 8px;">
-                      ¥{{ item.price }}
-                    </el-text>
-                    <el-progress 
-                      :percentage="item.similarity * 100" 
-                      :format="() => `${(item.similarity * 100).toFixed(0)}%`" 
-                      :size="'small'" 
-                      style="margin-top: 12px;"
-                      :stroke-width="8"
-                    />
-                  </el-card>
-                </el-col>
-              </el-row>
+              <div v-if="recognitionResult.similar && recognitionResult.similar.filter(item => item.similarity > 0.5 && item.status === 1).length">
+                <el-row :gutter="20">
+                  <el-col :xs="24" :sm="12" :md="8" v-for="(item, index) in recognitionResult.similar.filter(item => item.similarity > 0.5 && item.status === 1)" :key="index">
+                    <el-card shadow="hover" :body-style="{ padding: '15px' }" :class="'similar-material-card'">
+                      <el-image 
+                        :src="item.image || 'https://via.placeholder.com/100'"
+                        loading="lazy"
+                        fit="contain" 
+                        style="width: 100%; height: 200px; border-radius: 8px; margin-bottom: 12px; background-color: #f5f7fa;"
+                      />
+                      <el-text :truncate="{ rows: 2 }" style="font-weight: 500; font-size: 14px;">
+                        {{ item.name }}
+                      </el-text>
+                      <el-text type="danger" size="small" style="display: block; margin-top: 8px;">
+                        ¥{{ item.price }}
+                      </el-text>
+                      <el-progress 
+                        :percentage="item.similarity * 100" 
+                        :format="() => `${(item.similarity * 100).toFixed(0)}%`" 
+                        :size="'small'" 
+                        style="margin-top: 12px;"
+                        :stroke-width="8"
+                      />
+                      <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+                        <el-popover
+                        placement="top"
+                        :width="350"
+                        trigger="click"
+                      >
+                        <template #reference>
+                          <el-button type="info" size="small" :icon="View">
+                            详情
+                          </el-button>
+                        </template>
+                        <div style="padding: 15px;">
+                          <el-image 
+                            :src="item.image || 'https://via.placeholder.com/100'"
+                            fit="cover" 
+                            style="width: 100%; height: 150px; border-radius: 8px; margin-bottom: 15px;"
+                          />
+                          <el-text style="font-weight: 500; font-size: 16px;">{{ item.name || item.productName }}</el-text>
+                          <el-text type="danger" style="display: block; margin-top: 10px; font-size: 15px;">
+                            ¥{{ item.price }}
+                          </el-text>
+                          <el-text size="small" style="display: block; margin-top: 8px;">
+                            相似度: {{ (item.similarity * 100).toFixed(0) }}%
+                          </el-text>
+                          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                            <el-space direction="vertical" size="6">
+                              <el-text size="small">
+                                <span style="font-weight: 500;">分类:</span> {{ item.category || '未分类' }}
+                              </el-text>
+                              <el-text size="small">
+                                <span style="font-weight: 500;">材质:</span> {{ item.material || '未知' }}
+                              </el-text>
+                              <el-text size="small">
+                                <span style="font-weight: 500;">颜色:</span> {{ item.color || '未知' }}
+                              </el-text>
+                              <el-text size="small">
+                                <span style="font-weight: 500;">库存:</span> {{ item.stock || 0 }} {{ item.unit || '件' }}
+                              </el-text>
+                              <el-text size="small">
+                                <span style="font-weight: 500;">供应商:</span> {{ item.supplier || '未知' }}
+                              </el-text>
+                            </el-space>
+                          </div>
+                        </div>
+                      </el-popover>
+                      </div>
+                    </el-card>
+                  </el-col>
+                </el-row>
+              </div>
+              <div v-else style="text-align: center; padding: 40px 0;">
+                <el-empty description="暂无相似辅料推荐" :image-size="80" />
+              </div>
             </el-card>
           </el-collapse-item>
         </el-collapse>
@@ -661,8 +706,10 @@
             @click="confirmAddMaterial"
             :icon="Star"
             size="large"
+            :loading="isAddingMaterial"
+            :disabled="isAddingMaterial"
           >
-            添加到辅料库
+            {{ isAddingMaterial ? '添加中...' : '添加到辅料库' }}
           </el-button>
         </div>
       </div>
@@ -676,6 +723,11 @@
         action="#"
         :auto-upload="false"
         :on-change="handleImageSearchFileChange"
+        :on-remove="handleImageSearchFileRemove"
+        :file-list="imageSearchFiles"
+        :multiple="false"
+        accept="image/*"
+        :max-size="10485760"
       >
         <el-icon class="el-icon--upload"><upload-filled /></el-icon>
         <div class="el-upload__text">
@@ -685,26 +737,75 @@
       
       <el-divider v-if="searchImageResult">搜索结果</el-divider>
       
-      <el-row :gutter="16" v-if="searchImageResult">
-        <el-col :span="8" v-for="item in searchImageResult" :key="item.id">
+      <el-row :gutter="16" v-if="searchImageResult && searchImageResult.filter(item => item.similarity > 0.65).length">
+        <el-col :span="8" v-for="item in searchImageResult.filter(item => item.similarity > 0.65)" :key="item.id">
           <el-card shadow="hover">
             <el-image 
               v-if="item.image"
               :src="item.image"
               loading="lazy"
-              fit="cover"
-              style="width: 100%; height: 150px;"
+              fit="contain"
+              style="width: 100%; height: 200px; background-color: #f5f7fa; border-radius: 8px;"
             />
-            <el-empty v-else description="暂无图片" :image-size="80" />
+            <div v-else style="width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 8px;">
+              <el-empty description="暂无图片" :image-size="80" />
+            </div>
             <el-divider />
             <el-space direction="vertical" style="width: 100%">
               <el-text truncated>{{ item.productName }}</el-text>
               <el-text type="danger" tag="b">¥{{ item.price }}</el-text>
-              <el-text type="success" size="small">相似度: {{ item.similarity * 100 }}%</el-text>
+              <el-text type="success" size="small">相似度: {{ (item.similarity * 100).toFixed(0) }}%</el-text>
             </el-space>
+            <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+              <el-popover
+                placement="top"
+                :width="350"
+                trigger="click"
+              >
+                <template #reference>
+                  <el-button type="info" size="small" :icon="View">
+                    详情
+                  </el-button>
+                </template>
+                <div style="padding: 15px;">
+                  <el-image 
+                    :src="item.image || 'https://via.placeholder.com/100'"
+                    fit="cover" 
+                    style="width: 100%; height: 150px; border-radius: 8px; margin-bottom: 15px;"
+                  />
+                  <el-text style="font-weight: 500; font-size: 16px;">{{ item.productName }}</el-text>
+                  <el-text type="danger" style="display: block; margin-top: 10px; font-size: 15px;">
+                    ¥{{ item.price }}
+                  </el-text>
+                  <el-text size="small" style="display: block; margin-top: 8px;">
+                    相似度: {{ (item.similarity * 100).toFixed(0) }}%
+                  </el-text>
+                  <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                    <el-space direction="vertical" size="6">
+                      <el-text size="small">
+                        <span style="font-weight: 500;">分类:</span> {{ item.category || '未分类' }}
+                      </el-text>
+                      <el-text size="small">
+                        <span style="font-weight: 500;">材质:</span> {{ item.material || '未知' }}
+                      </el-text>
+                      <el-text size="small">
+                        <span style="font-weight: 500;">颜色:</span> {{ item.color || '未知' }}
+                      </el-text>
+                      <el-text size="small">
+                        <span style="font-weight: 500;">库存:</span> {{ item.stock || 0 }} {{ item.unit || '件' }}
+                      </el-text>
+                      <el-text size="small">
+                        <span style="font-weight: 500;">供应商:</span> {{ item.supplier || '未知' }}
+                      </el-text>
+                    </el-space>
+                  </div>
+                </div>
+              </el-popover>
+            </div>
           </el-card>
         </el-col>
       </el-row>
+      <el-empty v-else-if="!isSearching && searchImageResult" description="暂无相似度大于65%的辅料" :image-size="80" />
       
       <el-empty v-else-if="!isSearching" description="暂无搜索结果" :image-size="80" />
       
@@ -755,66 +856,58 @@
     <el-dialog v-model="addMaterialDialog" title="添加新辅料" width="600px" append-to-body>
       <el-form :model="addMaterialForm" :rules="addMaterialRules" ref="addMaterialFormRef" label-width="100px">
         <el-form-item label="辅料编码">
-          <el-input v-model="addMaterialForm.productCode" placeholder="请输入辅料编码" />          </el-form-item>
+          <el-input v-model="addMaterialForm.productCode" placeholder="请输入辅料编码" />
+        </el-form-item>
         <el-form-item label="辅料名称">
-          <el-input v-model="addMaterialForm.productName" placeholder="请输入辅料名称" />          </el-form-item>
+          <el-input v-model="addMaterialForm.productName" placeholder="请输入辅料名称" />
+        </el-form-item>
         <el-form-item label="分类">
           <el-select v-model="addMaterialForm.category" placeholder="请选择分类" style="width: 100%">
-            <el-option label="面料" value="面料" />            <el-option label="辅料" value="辅料" />            <el-option label="扣件" value="扣件" />          </el-select>
+            <el-option label="面料" value="面料" />
+            <el-option label="辅料" value="辅料" />
+            <el-option label="扣件" value="扣件" />
+          </el-select>
         </el-form-item>
         <el-form-item label="具体类型">
-          <el-select v-model="addMaterialForm.type" placeholder="请选择具体类型" style="width: 100%" filterable allow-create>
-            <el-option v-for="type in typeOptions" :key="type" :label="type" :value="type" />          </el-select>
+          <el-select v-model="addMaterialForm.type" placeholder="请选择具体类型" style="width: 100%" filterable allow-create default-first-option>
+            <el-option v-for="type in typeOptions" :key="type" :label="type" :value="type" />
+          </el-select>
         </el-form-item>
         <el-form-item label="风格">
-          <el-select v-model="addMaterialForm.style" placeholder="请选择风格" style="width: 100%" filterable allow-create>
-            <el-option v-for="style in styleOptions" :key="style" :label="style" :value="style" />          </el-select>
+          <el-select v-model="addMaterialForm.style" placeholder="请选择风格" style="width: 100%" filterable allow-create default-first-option>
+            <el-option v-for="style in styleOptions" :key="style" :label="style" :value="style" />
+          </el-select>
         </el-form-item>
         <el-form-item label="规格">
-          <el-input v-model="addMaterialForm.specification" placeholder="请输入规格" />          </el-form-item>
+          <el-input v-model="addMaterialForm.specification" placeholder="请输入规格" />
+        </el-form-item>
         <el-form-item label="单位">
-          <el-input v-model="addMaterialForm.unit" placeholder="请输入单位" />          </el-form-item>
+          <el-input v-model="addMaterialForm.unit" placeholder="请输入单位" />
+        </el-form-item>
         <el-form-item label="单价">
-          <el-input-number v-model="addMaterialForm.price" :precision="2" :min="0" style="width: 100%" placeholder="请输入单价" />          </el-form-item>
+          <el-input-number v-model="addMaterialForm.price" :precision="2" :min="0" style="width: 100%" placeholder="请输入单价" />
+        </el-form-item>
         <el-form-item label="预计货期">
-          <el-input-number v-model="addMaterialForm.expectedDeliveryDays" :min="0" style="width: 100%" placeholder="请输入预计货期（天）" />          </el-form-item>
+          <el-input-number v-model="addMaterialForm.expectedDeliveryDays" :min="0" style="width: 100%" placeholder="请输入预计货期（天）" />
+        </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="addMaterialForm.description" type="textarea" :rows="3" placeholder="请输入描述" />          </el-form-item>
+          <el-input v-model="addMaterialForm.description" type="textarea" :rows="3" placeholder="请输入描述" />
+        </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="addMaterialForm.status">
             <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">停用</el-radio>          </el-radio-group>
+            <el-radio :label="0">停用</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="addMaterialDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitAddMaterial">确定添加</el-button>      </template>
+        <el-button type="primary" @click="submitAddMaterial">确定添加</el-button>
+      </template>
     </el-dialog>
 
-    <!-- 选择项目方案对话框 -->
-    <el-dialog v-model="projectSchemeDialogVisible" title="选择项目方案" width="500px" append-to-body>
-      <el-form :model="{}" label-width="80px">
-        <el-form-item label="选择项目" required>
-          <el-select v-model="selectedProject" placeholder="请选择项目" style="width: 100%" @change="handleProjectChange">
-            <el-option v-for="project in projectList" :key="project.id" :label="project.projectName" :value="project" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="选择方案" required>
-          <el-select v-model="selectedScheme" placeholder="请选择方案" style="width: 100%" :disabled="!selectedProject">
-            <el-option 
-              v-for="scheme in selectedProject?.schemes || []" 
-              :key="scheme.id" 
-              :label="`${scheme.schemeName} (${scheme.status})`" 
-              :value="scheme.id" 
-              :disabled="scheme.status === '已确定'"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="projectSchemeDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="addToProject">确定添加</el-button>      </template>
-    </el-dialog>
+    <!-- 选择项目方案对话框 - 移至 MainLayout.vue 中 -->
+
     
     <!-- 上传更多图片对话框 -->
     <el-dialog v-model="uploadMoreImagesDialog" title="上传更多图片" width="500px" append-to-body>
@@ -872,12 +965,12 @@
           </el-select>
         </el-form-item>
         <el-form-item label="风格">
-          <el-select v-model="editForm.style" placeholder="请选择风格" style="width: 100%" filterable allow-create>
+          <el-select v-model="editForm.style" placeholder="请选择风格" style="width: 100%" filterable allow-create default-first-option>
             <el-option v-for="style in styleOptions" :key="style" :label="style" :value="style" />
           </el-select>
         </el-form-item>
         <el-form-item label="具体类型">
-          <el-select v-model="editForm.type" placeholder="请选择具体类型" style="width: 100%" filterable allow-create>
+          <el-select v-model="editForm.type" placeholder="请选择具体类型" style="width: 100%" filterable allow-create default-first-option>
             <el-option v-for="type in typeOptions" :key="type" :label="type" :value="type" />
           </el-select>
         </el-form-item>
@@ -906,14 +999,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { Camera, Star, ShoppingCart, UploadFilled, Loading, Clock, Search, RefreshLeft, View, Refresh, ZoomIn, CopyDocument, Share, DataAnalysis, Close, Upload, Edit, Check } from '@element-plus/icons-vue'
 import { getMaterialList, recognizeMaterial, searchByImage } from '@/api/material'
-import { saveProduct, updateProduct, recommendProducts, deleteProduct } from '@/api/product'
+import { saveProduct, updateProduct, recommendProducts, deleteProduct, collaborativeRecommend, recordBehavior } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
 import { getInventoryList } from '@/api/inventory'
 import { uploadFile, deleteFile, checkFileExists, uploadMultipleFiles } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import ProjectSchemeDialog from '../components/ProjectSchemeDialog.vue'
 import { useUserStore } from '@/stores/user'
 import { useMaterialStore } from '@/stores/material'
 import { aiRequest } from '@/api/material'
@@ -964,16 +1058,22 @@ const loadFavorites = () => {
 }
 
 // Toggle favorite status
-const toggleFavorite = (materialId) => {
+const toggleFavorite = async (materialId) => {
   if (favoriteMaterials.value.has(materialId)) {
     favoriteMaterials.value.delete(materialId)
     ElMessage.success('已取消收藏')
   } else {
     favoriteMaterials.value.add(materialId)
     ElMessage.success('已添加到收藏')
+    if (userStore.user?.id) {
+      try {
+        await recordBehavior(userStore.user.id, materialId, 'favorite')
+      } catch (e) {
+        console.warn('记录收藏行为失败:', e)
+      }
+    }
   }
   
-  // Save favorites to localStorage (mock persistence)
   localStorage.setItem('materialFavorites', JSON.stringify([...favoriteMaterials.value]))
 }
 
@@ -1000,16 +1100,86 @@ const toggleFavoritesView = () => {
 }
 
 // Toggle recommendations view
-const toggleRecommendationsView = () => {
+const toggleRecommendationsView = async () => {
   showRecommendations.value = !showRecommendations.value
-  showFavorites.value = false // 确保收藏视图关闭
+  showFavorites.value = false
+  
+  console.log('推荐按钮点击 - 当前用户信息:', userStore.user)
+  console.log('推荐按钮点击 - userStore.user?.id:', userStore.user?.id)
+  
   if (showRecommendations.value) {
-    // 模拟个性化推荐（目前尚未实现真实的推荐算法）
-    ElMessage.info('个性化推荐功能正在开发中，敬请期待！')
-    // 暂时显示所有辅料
-    loadMaterials()
+    if (!userStore.user?.id) {
+      console.warn('用户 ID 不存在，检查是否已登录')
+      ElMessage.warning('请先登录以获取个性化推荐')
+      showRecommendations.value = false
+      loadMaterials()
+      return
+    }
+    
+    try {
+      ElMessage.info('正在生成个性化推荐，请稍候...')
+      const res = await collaborativeRecommend(userStore.user.id)
+      if (res && res.data && res.data.length > 0) {
+        // 处理推荐数据的图片字段
+        const recommendedData = res.data.map(item => {
+          // 处理图片字段
+          let imageUrl = item.imageUrl || item.image
+          
+          // 优先处理 images 字段（JSON 格式的图片数组）
+          if (item.images) {
+            try {
+              let imagesStr = item.images
+              if (typeof imagesStr === 'string' && imagesStr.startsWith('"') && imagesStr.endsWith('"')) {
+                imagesStr = imagesStr.substring(1, imagesStr.length - 1)
+              }
+              const images = JSON.parse(imagesStr)
+              if (Array.isArray(images) && images.length > 0) {
+                imageUrl = images[0]
+              }
+            } catch (e) {
+              console.error('解析图片列表失败:', e)
+            }
+          }
+          
+          // 处理图片 URL
+          if (imageUrl && typeof imageUrl === 'string') {
+            if (imageUrl === '上传成功' || imageUrl === '[]') {
+              imageUrl = null
+            } else if (imageUrl.startsWith('http')) {
+              const lastSlashIndex = imageUrl.lastIndexOf('/')
+              if (lastSlashIndex !== -1) {
+                const filename = imageUrl.substring(lastSlashIndex + 1)
+                imageUrl = `/file/get-image?filename=${filename}`
+              }
+            } else if (imageUrl && !imageUrl.startsWith('/file/get-image')) {
+              imageUrl = `/file/get-image?filename=${imageUrl}`
+            }
+          }
+          
+          console.log('推荐辅料名称:', item.productName);
+          console.log('推荐 - 处理后的图片 URL:', imageUrl);
+          
+          return {
+            ...item,
+            image: imageUrl
+          }
+        })
+        
+        allMaterials.value = recommendedData
+        total.value = allMaterials.value.length
+        currentPage.value = 1
+        updatePagination()
+        ElMessage.success(`为您推荐 ${recommendedData.length} 个辅料`)
+      } else {
+        ElMessage.info('暂无推荐数据，系统为您推荐热门辅料')
+        loadMaterials()
+      }
+    } catch (error) {
+      console.error('获取推荐失败:', error)
+      ElMessage.warning('推荐服务暂时不可用，显示全部辅料')
+      loadMaterials()
+    }
   } else {
-    // Reload all materials
     loadMaterials()
   }
 }
@@ -1039,7 +1209,6 @@ const sortMaterials = () => {
 }
 
 // Watch for sort changes
-import { watch } from 'vue'
 watch(sortBy, () => {
   sortMaterials()
 })
@@ -1302,6 +1471,8 @@ const generateProductCode = () => {
 }
 
 // 确认添加辅料
+const isAddingMaterial = ref(false)
+
 const confirmAddMaterial = async () => {
   if (!recognitionResult.value) return
   
@@ -1316,9 +1487,13 @@ const confirmAddMaterial = async () => {
     }
   ).then(async () => {
     try {
+      // 显示加载动画
+      isAddingMaterial.value = true
+      
       // 检查是否有上传的文件
       if (uploadedFiles.value.length === 0 || !uploadedFiles.value[0].raw) {
         ElMessage.error('请先上传图片')
+        isAddingMaterial.value = false
         return
       }
       
@@ -1330,6 +1505,7 @@ const confirmAddMaterial = async () => {
       if (checkRes.code === 200) {
         if (checkRes.data.exists) {
           ElMessage.warning('该图片已存在于辅料库中，无法重复添加')
+          isAddingMaterial.value = false
           return
         }
       } else {
@@ -1350,6 +1526,7 @@ const confirmAddMaterial = async () => {
       let fileUrls = []
       if (allFiles.length === 0) {
         ElMessage.error('请先上传图片')
+        isAddingMaterial.value = false
         return
       } else if (allFiles.length === 1) {
         // 单个文件上传
@@ -1441,6 +1618,7 @@ const confirmAddMaterial = async () => {
       if (!uploadedFiles.value || uploadedFiles.value.length === 0 || !uploadedFiles.value[0]?.raw) {
         console.error('向量化失败: 没有可用的上传文件');
         ElMessage.error('向量化失败：无可用文件，无法添加辅料');
+        isAddingMaterial.value = false
         return;
       }
       
@@ -1573,6 +1751,7 @@ const confirmAddMaterial = async () => {
         }
         
         ElMessage.error('向量化失败：' + errorMessage + '，无法添加辅料');
+        isAddingMaterial.value = false
         return;
       }
       
@@ -1580,6 +1759,26 @@ const confirmAddMaterial = async () => {
       if (vectorizeSuccess) {
         // 显示成功提示
         ElMessage.success('辅料已成功添加到待审核列表，请等待管理员审核')
+        
+        // 询问管理员是否需要进行AI识别
+        if (userStore.user?.role === 'admin') {
+          ElMessageBox.confirm(
+            '辅料添加成功！是否需要对该辅料进行AI识别分析？',
+            'AI识别询问',
+            {
+              confirmButtonText: '是',
+              cancelButtonText: '否',
+              type: 'info'
+            }
+          ).then(() => {
+            // 打开AI识别对话框
+            aiDialogVisible.value = true
+            // 可以在这里预填充相关信息
+            console.log('打开AI识别对话框');
+          }).catch(() => {
+            // 用户取消，不执行任何操作
+          })
+        }
       }
       
       // 关闭AI识别对话框
@@ -1590,9 +1789,11 @@ const confirmAddMaterial = async () => {
       uploadedFiles.value = []
       additionalFiles.value = []
       recognitionProgress.value = 0
+      isAddingMaterial.value = false
     } catch (error) {
       console.error('添加辅料失败:', error)
       ElMessage.error('添加辅料失败，请稍后重试')
+      isAddingMaterial.value = false
     }
   }).catch(() => {
     // 用户取消，不执行任何操作
@@ -1603,6 +1804,7 @@ const confirmAddMaterial = async () => {
 const imageSearchVisible = ref(false)
 const isSearching = ref(false)
 const searchImageResult = ref(null)
+const imageSearchFiles = ref([])
 
 // Detail
 const detailPopover = ref(null)
@@ -2025,32 +2227,91 @@ const openImageSearch = () => {
   imageSearchVisible.value = true
 }
 
-const handleImageSearchFileChange = async (file) => {
+const handleImageSearchFileRemove = (file, fileList) => {
+  console.log('移除图片搜索文件:', file);
+  imageSearchFiles.value = fileList.map(f => ({
+    name: f.name,
+    url: f.url,
+    uid: f.uid,
+    raw: f.raw
+  }))
+  searchImageResult.value = null
+}
+
+const handleImageSearchFileChange = async (file, fileList) => {
+  console.log('=== 图片搜索文件变更事件触发 ===');
+  console.log('文件信息:', file);
+  console.log('文件列表:', fileList);
+  
+  // 更新文件列表
+  imageSearchFiles.value = fileList.map(f => ({
+    name: f.name,
+    url: URL.createObjectURL(f.raw),
+    uid: f.uid,
+    raw: f.raw
+  }))
+  
+  console.log('更新后的文件列表:', imageSearchFiles.value);
+  
   isSearching.value = true
   searchImageResult.value = null
+  
   try {
-    // 先上传文件到MinIO
-    console.log('上传文件到MinIO');
-    const uploadRes = await uploadFile(file.raw)
-    console.log('文件上传返回结果:', uploadRes);
+    console.log('开始图片搜索处理');
     
-    if (uploadRes.code === 200) {
-      const res = await searchByImage(file)
-      if (res.code === 200) {
-        searchImageResult.value = res.data
+    if (!file || !file.raw) {
+      throw new Error('文件格式错误，缺少原始文件对象')
+    }
+    
+    console.log('文件验证通过，开始调用API');
+    
+    // 调用真实的图片搜索 API（不再需要单独上传到 MinIO）
+    const [res, inventoryRes] = await Promise.all([
+      searchByImage(file, 10, 0.6), // limit=10, threshold=0.6
+      getInventoryList()
+    ])
+    
+    console.log('API调用完成，响应结果:', res);
+    console.log('库存数据:', inventoryRes);
+    if (res.code === 200) {
+      console.log('图片搜索成功，结果数量:', res.data ? res.data.length : 0);
+      
+      // 构建库存映射
+      const inventoryData = inventoryRes.data || []
+      const inventoryMap = new Map()
+      
+      inventoryData.forEach(inv => {
+        const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
+        if (productCode) {
+          inventoryMap.set(productCode, inv)
+        }
+      })
+      
+      // 处理搜索结果，添加库存信息和相似度格式化
+      searchImageResult.value = (res.data || []).map(item => {
+        const inventory = inventoryMap.get(item.productCode)
+        return {
+          ...item,
+          stock: inventory ? (inventory.quantity || 0) : 0,
+          similarityFormatted: item.similarity ? (item.similarity * 100).toFixed(1) + '%' : 'N/A'
+        }
+      })
+      
+      if (searchImageResult.value.length === 0) {
+        ElMessage.info('未找到相似辅料，请尝试其他图片')
+      } else {
+        ElMessage.success(`找到 ${searchImageResult.value.length} 个相似辅料`)
       }
     } else {
-      throw new Error('文件上传失败: ' + uploadRes.message)
+      throw new Error(res.message || '搜索失败')
     }
   } catch (error) {
     console.error('图片搜索失败:', error)
-    ElMessage.error('图片搜索失败: ' + (error.message || '未知错误'))
+    ElMessage.error('图片搜索失败：' + (error.message || '未知错误'))
   } finally {
     isSearching.value = false
   }
 }
-
-
 
 const showDetail = async (item, event) => {
   // 获取真实库存数据
@@ -2076,11 +2337,21 @@ const showDetail = async (item, event) => {
     }
   } catch (error) {
     console.error('获取库存数据失败:', error)
-    // 如果获取失败，使用默认值0
+    // 如果获取失败，使用默认值 0
     item.stock = 0
   }
   
-  // 显示对话框（使用materialStore）
+  // 记录浏览行为
+  if (userStore.user?.id) {
+    try {
+      await recordBehavior(userStore.user.id, item.id, 'browse')
+      console.log('浏览行为已记录:', userStore.user.id, item.id)
+    } catch (e) {
+      console.warn('记录浏览行为失败:', e)
+    }
+  }
+  
+  // 显示对话框（使用 materialStore）
   materialStore.showDetail(item)
 }
 
@@ -2293,79 +2564,26 @@ const compareMaterials = (material) => {
 
 
 
-// 添加到项目方案
-const projectSchemeDialogVisible = ref(false)
-const selectedProject = ref(null)
-const selectedScheme = ref(null)
-const projectList = ref([])
-const currentMaterialForProject = ref(null)
-
-// 加载项目列表
-const loadProjects = async () => {
-  try {
-    // 获取当前登录用户ID
-    const userId = userStore.user?.id || 1
-    const res = await getProjectList({ userId })
-    if (res.code === 200) {
-      projectList.value = res.data
-    }
-  } catch (error) {
-    ElMessage.error('加载项目列表失败')
-  }
-}
+// 添加到项目方案 - 状态已移至 material store 管理
 
 // 打开选择项目方案对话框
 const openProjectSchemeDialog = (item) => {
-  currentMaterialForProject.value = item
-  loadProjects()
-  projectSchemeDialogVisible.value = true
+  materialStore.showProjectSchemeDialog(item)
 }
 
-// 选择项目时，更新可用方案列表
-const handleProjectChange = (projectId) => {
-  selectedScheme.value = null
-  // 这里可以根据projectId加载对应方案
-}
-
-// 将辅料添加到项目方案
-const addToProject = async () => {
-  if (!selectedProject.value || !selectedScheme.value || !currentMaterialForProject.value) {
-    ElMessage.warning('请选择项目和方案')
-    return
-  }
-  
-  // 检查方案状态，防止将辅料添加到已确定的方案中
-  const selectedSchemeObj = selectedProject.value.schemes.find(scheme => scheme.id === selectedScheme.value)
-  if (selectedSchemeObj && selectedSchemeObj.status === '已确定') {
-    ElMessage.warning('该方案已确定，无法添加新辅料')
-    return
-  }
-  
-  try {
-    // 调用API将辅料添加到方案
-    const res = await addMaterialToScheme(selectedScheme.value, {
-      materialId: currentMaterialForProject.value.id,
-      productCode: currentMaterialForProject.value.productCode,
-      productName: currentMaterialForProject.value.productName,
-      category: currentMaterialForProject.value.category,
-      specification: currentMaterialForProject.value.specification,
-      unit: currentMaterialForProject.value.unit,
-      price: currentMaterialForProject.value.price,
-      image: currentMaterialForProject.value.image || '',
-      quantity: 1 // 默认添加1个
-    })
-    
-    if (res.code === 200) {
-      ElMessage.success(`已将 ${currentMaterialForProject.value.productName} 加入方案`)
-      projectSchemeDialogVisible.value = false
-      selectedProject.value = null
-      selectedScheme.value = null
-      currentMaterialForProject.value = null
+// 处理添加成功
+const handleAddSuccess = async () => {
+  // 记录添加方案行为
+  if (userStore.user?.id && materialStore.currentMaterialForProject) {
+    try {
+      await recordBehavior(userStore.user.id, materialStore.currentMaterialForProject.id, 'add_to_scheme')
+    } catch (e) {
+      console.warn('记录添加方案行为失败:', e)
     }
-  } catch (error) {
-    ElMessage.error('添加失败，请重试')
   }
+  materialStore.hideProjectSchemeDialog()
 }
+
 
 // 分页方法
 const handleSizeChange = (size) => {

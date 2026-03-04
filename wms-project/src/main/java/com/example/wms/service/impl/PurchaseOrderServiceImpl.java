@@ -4,6 +4,7 @@ import com.example.wms.common.Result;
 import com.example.wms.entity.*;
 import com.example.wms.mapper.*;
 import com.example.wms.service.PurchaseOrderService;
+import com.example.wms.service.UserBehaviorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     
     @Autowired
     private SupplierMapper supplierMapper;
+    
+    @Autowired
+    private UserBehaviorService userBehaviorService;
     
     private Long getCurrentUserId() {
         try {
@@ -179,11 +183,28 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             for (PurchaseOrderItem item : orderItems) {
                 item.setOrderId(order.getId());
             }
-            System.out.println("=== 准备插入订单明细，数量: " + orderItems.size());
+            System.out.println("=== 准备插入订单明细，数量：" + orderItems.size());
             purchaseOrderItemMapper.batchInsert(orderItems);
             System.out.println("=== 订单明细插入成功");
             
-            System.out.println("=== 采购订单创建成功，订单ID: " + order.getId());
+            // 记录用户采购行为（每个辅料明细记录一次）
+            Long userId = order.getCreatorId();
+            if (userId != null) {
+                try {
+                    for (PurchaseOrderItem item : orderItems) {
+                        if (item.getMaterialId() != null) {
+                            userBehaviorService.recordBehavior(userId, item.getMaterialId(), "purchase");
+                            System.out.println("=== 记录采购行为：userId=" + userId + ", materialId=" + item.getMaterialId());
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("=== 记录采购行为失败：" + e.getMessage());
+                    e.printStackTrace();
+                    // 不抛出异常，不影响采购订单创建
+                }
+            }
+            
+            System.out.println("=== 采购订单创建成功，订单 ID: " + order.getId());
             return Result.success(null);
         } catch (Exception e) {
             System.out.println("=== 创建采购订单失败，需求单ID: " + requirementId);

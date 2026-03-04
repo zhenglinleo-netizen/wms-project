@@ -8,6 +8,8 @@
         <result column="product_name" property="productName"/>
         <result column="category" property="category"/>
         <result column="type" property="type"/>
+        <result column="material" property="material"/>
+        <result column="color" property="color"/>
         <result column="style" property="style"/>
         <result column="specification" property="specification"/>
         <result column="unit" property="unit"/>
@@ -29,6 +31,8 @@
           m.material_name AS product_name,
           mc.category_name AS category,
           m.type,
+          mt.type_name AS material,
+          m.color,
           m.style,
           m.specification,
           m.unit,
@@ -43,6 +47,7 @@
           m.update_time
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
+        LEFT JOIN material_type mt ON m.type_id = mt.id
         WHERE m.id = #{id}
     </select>
 
@@ -53,6 +58,8 @@
           m.material_name AS product_name,
           mc.category_name AS category,
           m.type,
+          mt.type_name AS material,
+          m.color,
           m.style,
           m.specification,
           m.unit,
@@ -67,6 +74,7 @@
           m.update_time
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
+        LEFT JOIN material_type mt ON m.type_id = mt.id
         WHERE m.material_code = #{productCode}
     </select>
 
@@ -77,6 +85,8 @@
           m.material_name AS product_name,
           mc.category_name AS category,
           m.type,
+          mt.type_name AS material,
+          m.color,
           m.style,
           m.specification,
           m.unit,
@@ -91,6 +101,7 @@
           m.update_time
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
+        LEFT JOIN material_type mt ON m.type_id = mt.id
         WHERE m.status != -1
         ORDER BY m.create_time DESC
     </select>
@@ -102,6 +113,8 @@
           m.material_name AS product_name,
           mc.category_name AS category,
           m.type,
+          mt.type_name AS material,
+          m.color,
           m.style,
           m.specification,
           m.unit,
@@ -116,6 +129,7 @@
           m.update_time
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
+        LEFT JOIN material_type mt ON m.type_id = mt.id
         <where>
             m.status != -1
             <if test="productCode != null and productCode != ''">
@@ -135,12 +149,14 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO material (material_code, material_name, category_id, type, style, specification, unit, price, description, status, file_hash, image_url, images)
+        INSERT INTO material (material_code, material_name, category_id, type_id, type, color, style, specification, unit, price, description, status, file_hash, image_url, images)
         VALUES (
           #{productCode},
           #{productName},
           COALESCE(#{categoryId}, (SELECT id FROM material_category WHERE category_name = #{category} LIMIT 1)),
+          COALESCE((SELECT id FROM material_type WHERE type_name = #{material} LIMIT 1), NULL),
           #{type},
+          #{color},
           #{style},
           #{specification},
           #{unit},
@@ -161,7 +177,9 @@
             <if test="category != null and (categoryId == null)">
               category_id = (SELECT id FROM material_category WHERE category_name = #{category} LIMIT 1),
             </if>
+            <if test="material != null">type_id = (SELECT id FROM material_type WHERE type_name = #{material} LIMIT 1),</if>
             <if test="type != null">type = #{type},</if>
+            <if test="color != null">color = #{color},</if>
             <if test="style != null">style = #{style},</if>
             <if test="specification != null">specification = #{specification},</if>
             <if test="unit != null">unit = #{unit},</if>
@@ -187,6 +205,8 @@
           m.material_name AS product_name,
           mc.category_name AS category,
           m.type,
+          mt.type_name AS material,
+          m.color,
           m.style,
           m.specification,
           m.unit,
@@ -201,6 +221,7 @@
           m.update_time
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
+        LEFT JOIN material_type mt ON m.type_id = mt.id
         WHERE m.file_hash = #{fileHash}
     </select>
 
@@ -211,6 +232,8 @@
           m.material_name AS product_name,
           mc.category_name AS category,
           m.type,
+          mt.type_name AS material,
+          m.color,
           m.style,
           m.specification,
           m.unit,
@@ -225,6 +248,7 @@
           m.update_time
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
+        LEFT JOIN material_type mt ON m.type_id = mt.id
         WHERE m.status = -1
         ORDER BY m.update_time DESC
     </select>

@@ -28,16 +28,24 @@ import java.util.Map;
 @Service
 public class MilvusServiceImpl implements MilvusService {
 
-    @Autowired
+    @Autowired(required = false)
     private MilvusServiceClient milvusClient;
 
     @Override
     public SearchResults search(String collectionName, List<List<Float>> vectors, int topK) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot perform search");
+            throw new RuntimeException("Milvus service not available");
+        }
         return search(collectionName, vectors, topK, MetricType.IP);
     }
 
     @Override
     public SearchResults search(String collectionName, List<List<Float>> vectors, int topK, MetricType metricType) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot perform search");
+            throw new RuntimeException("Milvus service not available");
+        }
         return search(collectionName, vectors, topK, metricType, 10); // 默认nprobe=10
     }
     
@@ -45,6 +53,10 @@ public class MilvusServiceImpl implements MilvusService {
      * 带自定义nprobe参数的搜索方法
      */
     public SearchResults search(String collectionName, List<List<Float>> vectors, int topK, MetricType metricType, int nprobe) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot perform search");
+            throw new RuntimeException("Milvus service not available");
+        }
         SearchParam searchParam = SearchParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withMetricType(metricType)
@@ -65,6 +77,10 @@ public class MilvusServiceImpl implements MilvusService {
 
     @Override
     public List<Float> getVectorById(String collectionName, Long id) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot get vector by id");
+            return null;
+        }
         QueryParam queryParam = QueryParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withExpr("id == " + id)
@@ -87,6 +103,10 @@ public class MilvusServiceImpl implements MilvusService {
 
     @Override
     public void insert(String collectionName, String partitionName, List<List<Float>> vectors, List<Long> ids) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot insert vectors");
+            return;
+        }
         // 自动创建collection（如果不存在）
         if (!collectionExists(collectionName)) {
             log.info("Collection {} does not exist, creating it...", collectionName);
@@ -118,6 +138,10 @@ public class MilvusServiceImpl implements MilvusService {
 
     @Override
     public void createCollection(String collectionName, int dimension, MetricType metricType) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot create collection");
+            throw new RuntimeException("Milvus service not available");
+        }
         try {
             log.info("开始创建Milvus集合...");
             log.info("集合名称: {}", collectionName);
@@ -185,6 +209,10 @@ public class MilvusServiceImpl implements MilvusService {
      * 创建索引以优化搜索性能
      */
     public void createIndex(String collectionName, MetricType metricType) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot create index");
+            return;
+        }
         try {
             // 索引参数配置
             io.milvus.param.index.CreateIndexParam createIndexParam = io.milvus.param.index.CreateIndexParam.newBuilder()
@@ -215,6 +243,10 @@ public class MilvusServiceImpl implements MilvusService {
      * 加载集合到内存
      */
     public void loadCollection(String collectionName) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot load collection");
+            return;
+        }
         try {
             io.milvus.param.collection.LoadCollectionParam loadParam = io.milvus.param.collection.LoadCollectionParam.newBuilder()
                     .withCollectionName(collectionName)
@@ -242,6 +274,10 @@ public class MilvusServiceImpl implements MilvusService {
 
     @Override
     public boolean collectionExists(String collectionName) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot check collection existence");
+            return false;
+        }
         try {
             HasCollectionParam hasCollectionParam = HasCollectionParam.newBuilder()
                     .withCollectionName(collectionName)
@@ -273,6 +309,11 @@ public class MilvusServiceImpl implements MilvusService {
      */
     public Map<Long, Float> getSimilarMaterials(String collectionName, List<Float> vector, int topK, int nprobe) {
         Map<Long, Float> materialScores = new HashMap<>();
+
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, returning empty results");
+            return materialScores;
+        }
 
         try {
             // 检查collection是否存在
@@ -333,6 +374,10 @@ public class MilvusServiceImpl implements MilvusService {
 
     @Override
     public void deleteById(String collectionName, Long id) {
+        if (milvusClient == null) {
+            log.warn("Milvus client not initialized, cannot delete vector");
+            return;
+        }
         try {
             // 检查collection是否存在
             if (!collectionExists(collectionName)) {

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { login, getCurrentUser } from '@/api/user'
 import router from '@/router'
 
@@ -26,24 +26,19 @@ export const useUserStore = defineStore('user', () => {
     return false
   }
 
-  // 页面加载时初始化用户信息
-  onMounted(() => {
-    initUser()
-  })
-
   const setUser = (userData) => {
     user.value = userData
   }
 
-  const loginUser = async (username, password) => {
+  const loginUser = async (account, password) => {
     try {
-      console.log('调用登录API:', username, password)
-      const res = await login(username, password)
+      console.log('调用登录API:', account, password)
+      const res = await login(account, password)
       console.log('登录API返回:', res)
-      if (res.code === 200) {
+      if (res && res.code === 200) {
         console.log('登录成功，存储用户信息')
         user.value = {
-          id: res.data.id,
+          id: res.data.userId,
           username: res.data.username,
           realName: res.data.realName,
           company: res.data.company,
@@ -56,11 +51,12 @@ export const useUserStore = defineStore('user', () => {
         }
         return true
       } else {
-        console.log('登录失败，API返回错误:', res.message)
-        throw new Error(res.message || '登录失败')
+        console.log('登录失败，API返回错误:', res)
+        throw new Error(res?.message || '登录失败')
       }
     } catch (error) {
       console.error('登录异常:', error)
+      console.error('错误详情:', error.message, error.stack)
       throw error
     }
   }

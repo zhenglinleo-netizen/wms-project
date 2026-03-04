@@ -2,8 +2,10 @@ package com.example.wms.service.impl;
 
 import com.example.wms.entity.Product;
 import com.example.wms.entity.MaterialCategory;
+import com.example.wms.entity.MaterialType;
 import com.example.wms.mapper.ProductMapper;
 import com.example.wms.mapper.MaterialCategoryMapper;
+import com.example.wms.mapper.MaterialTypeMapper;
 import com.example.wms.service.ProductService;
 import com.example.wms.service.MinioService;
 import com.example.wms.service.MilvusService;
@@ -23,6 +25,8 @@ public class ProductServiceImpl implements ProductService {
     private ProductMapper productMapper;
     @Autowired
     private MaterialCategoryMapper categoryMapper;
+    @Autowired
+    private MaterialTypeMapper materialTypeMapper;
     @Autowired
     private CacheManager cacheManager;
     @Autowired
@@ -106,6 +110,17 @@ public class ProductServiceImpl implements ProductService {
                 } else {
                     product.setCategoryId(cat.getId());
                 }
+            }
+        }
+        
+        // 处理材质类型映射
+        if (product.getMaterial() != null && !product.getMaterial().isEmpty()) {
+            MaterialType materialType = materialTypeMapper.selectByName(product.getMaterial());
+            if (materialType == null) {
+                MaterialType newMaterialType = new MaterialType();
+                newMaterialType.setTypeName(product.getMaterial());
+                newMaterialType.setDescription(null);
+                materialTypeMapper.insert(newMaterialType);
             }
         }
         
