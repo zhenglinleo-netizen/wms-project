@@ -46,6 +46,7 @@
           >
             <el-icon class="menu-icon"><component :is="item.icon" /></el-icon>
             <span>{{ item.title }}</span>
+            <el-badge v-if="item.index === '/notification-center' && unreadCount > 0" :value="unreadCount" class="menu-badge" />
           </el-menu-item>
         </template>
       </el-menu>
@@ -521,7 +522,7 @@ import { changePassword } from '@/api/user'
 import { getMaterialList } from '@/api/material'
 import { recommendProducts } from '@/api/product'
 import { getProjectList, getSchemeListByProjectId, addMaterialToScheme } from '@/api/project'
-import { getInventoryList } from '@/api/inventory'
+
 import { uploadMultipleFiles } from '@/api/file'
 import { SwitchButton, OfficeBuilding, Link, GoodsFilled, UserFilled, Edit, ArrowLeft, Search, Odometer, Folder, List, ShoppingCart, Box, PieChart, Setting, Upload, UploadFilled, Star, Share, DataAnalysis, Delete, BellFilled, View } from '@element-plus/icons-vue'
 import { processImageUrl, getProcessedImageUrl, getImagePreviewList } from '@/utils/imageProcessor'
@@ -550,12 +551,12 @@ const activeMenu = computed(() => route.path)
 // 当前页面名称
 const currentPageName = computed(() => {
   const routeMap = {
-    '/dashboard': '仪表盘',
+    '/dashboard': '概览',
     '/material-library': '智能辅料库',
     '/project-scheme': '项目方案管理',
     '/requirement-management': '采购需求管理',
-    '/purchase-management': '采购管理',
-    '/inventory-management': '库存管理',
+
+
     '/material-management': '辅料管理',
     '/material-recycle': '辅料回收站',
     '/supplier': '供应商库',
@@ -573,7 +574,7 @@ const menuItems = [
   {
     index: '/dashboard',
     icon: Odometer,
-    title: '仪表盘'
+    title: '概览'
   },
   {
     index: '/material-library',
@@ -590,11 +591,7 @@ const menuItems = [
     icon: List,
     title: '采购需求管理'
   },
-  {
-    index: '/purchase-management',
-    icon: ShoppingCart,
-    title: '采购管理'
-  },
+
   {
     index: '/material-management',
     icon: GoodsFilled,
@@ -606,10 +603,11 @@ const menuItems = [
         icon: GoodsFilled,
         title: '辅料管理库'
       },
+
       {
-        index: '/inventory-management',
-        icon: Box,
-        title: '库存管理'
+        index: '/category-management',
+        icon: List,
+        title: '分类管理'
       },
       {
         index: '/material-recycle',
@@ -647,27 +645,10 @@ const menuItems = [
     title: '消息中心'
   },
   {
-    index: '/system-management',
-    icon: Setting,
-    title: '系统管理',
-    requireAdmin: true,
-    children: [
-      {
-        index: '/system-management',
-        icon: Setting,
-        title: '系统概览'
-      },
-      {
-        index: '/category-management',
-        icon: List,
-        title: '分类管理'
-      },
-      {
-        index: '/user',
-        icon: UserFilled,
-        title: '用户管理'
-      }
-    ]
+    index: '/user',
+    icon: UserFilled,
+    title: '用户管理',
+    requireAdmin: true
   }
 ]
 
@@ -931,25 +912,10 @@ const loadRecommendations = (item) => {
 // 加载相似辅料
 const loadSimilarMaterials = async (item) => {
   try {
-    // 并行获取相似辅料和库存数据
-    const [res, inventoryRes] = await Promise.all([
-      recommendProducts(item.id),
-      getInventoryList()
-    ])
+    // 获取相似辅料数据
+    const res = await recommendProducts(item.id)
     
     if (res.code === 200 && res.data) {
-      // 构建库存映射
-      const inventoryData = inventoryRes.data || []
-      const inventoryMap = new Map()
-      
-      inventoryData.forEach(inv => {
-        // 使用产品编码作为键，确保能正确匹配
-        const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
-        if (productCode) {
-          inventoryMap.set(productCode, inv)
-        }
-      })
-      
       // Map backend products to frontend format
       const similarMaterials = res.data
         .filter(prod => prod.status === 1) // 只保留上架状态的辅料
@@ -957,15 +923,11 @@ const loadSimilarMaterials = async (item) => {
           // Process image URL using the same logic as main materials
           const processedImage = getProcessedImageUrl(prod)
           
-          // 获取库存数据
-          const inventory = inventoryMap.get(prod.productCode)
-          const stock = inventory ? (inventory.quantity || 0) : 0
-          
           const processedMaterial = {
             ...prod,
             image: processedImage, // Use the same image processing logic
             similarity: prod.similarity, // Use real similarity score from backend
-            stock: stock // Add stock information
+            stock: prod.stock || 0 // Use stock from product data
           }
           
           return processedMaterial
@@ -989,32 +951,8 @@ const refreshSimilarMaterials = (item) => {
 
 // 显示辅料详情
 const showDetail = async (item, reloadRecommendations = true) => {
-  // 获取真实库存数据
-  try {
-    const inventoryRes = await getInventoryList()
-    const inventoryData = inventoryRes.data || []
-    const inventoryMap = new Map()
-    
-    inventoryData.forEach(inv => {
-      // 使用产品编码或物料编码作为键，确保能正确匹配
-      const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
-      if (productCode) {
-        inventoryMap.set(productCode, inv)
-      }
-    })
-    
-    // 更新当前物料的库存数据
-    const inventory = inventoryMap.get(item.productCode)
-    if (inventory) {
-      item.stock = inventory.quantity || 0
-    } else {
-      item.stock = 0
-    }
-  } catch (error) {
-    console.error('获取库存数据失败:', error)
-    // 如果获取失败，使用默认值0
-    item.stock = 0
-  }
+  // 设置库存数据（使用产品自身的库存字段）
+  item.stock = item.stock || 0
   
   if (reloadRecommendations) {
     loadRecommendations(item)
@@ -1604,6 +1542,11 @@ const handleAddSuccess = () => {
   height: 24px;
   border-radius: 8px;
   background-color: rgba(33, 150, 243, 0.1);
+}
+
+.menu-badge {
+  margin-left: 8px;
+  transform: translateY(-8px);
 }
 
 .menu-icon:hover {

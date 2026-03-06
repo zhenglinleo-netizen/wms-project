@@ -29,32 +29,21 @@
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
               <el-form-item label="分类">
                 <el-select v-model="filters.category" placeholder="全部" clearable style="width: 100%;">
-                  <el-option label="面料" value="面料" />
-                  <el-option label="辅料" value="辅料" />
-                  <el-option label="扣件" value="扣件" />
+                  <el-option v-for="option in categoryOptions" :key="option.value" :label="option.label" :value="option.value" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
               <el-form-item label="材质">
                 <el-select v-model="filters.material" placeholder="全部" clearable style="width: 100%;">
-                  <el-option label="棉" value="棉" />
-                  <el-option label="麻" value="麻" />
-                  <el-option label="丝" value="丝" />
-                  <el-option label="毛" value="毛" />
-                  <el-option label="涤纶" value="涤纶" />
+                  <el-option v-for="option in materialOptions" :key="option.value" :label="option.label" :value="option.value" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
               <el-form-item label="颜色">
                 <el-select v-model="filters.color" placeholder="全部" clearable style="width: 100%;">
-                  <el-option label="红色" value="红色" />
-                  <el-option label="蓝色" value="蓝色" />
-                  <el-option label="绿色" value="绿色" />
-                  <el-option label="黄色" value="黄色" />
-                  <el-option label="黑色" value="黑色" />
-                  <el-option label="白色" value="白色" />
+                  <el-option v-for="option in colorOptions" :key="option.value" :label="option.label" :value="option.value" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -75,6 +64,13 @@
                 </el-space>
               </el-form-item>
             </el-col>
+            <el-col :xs="24" :sm="24" :md="24" :lg="24">
+              <div style="display: flex; justify-content: center; margin-top: 20px;">
+                <el-button type="primary" @click="handleSearch" :icon="Search">
+                  确定筛选
+                </el-button>
+              </div>
+            </el-col>
           </el-row>
         </el-collapse-item>
       </el-collapse>
@@ -82,14 +78,11 @@
       <!-- 智能功能按钮 -->
       <div style="margin-top: 20px;">
         <el-space size="medium">
-          <el-button v-if="userStore.user?.role === 'admin'" type="warning" :icon="Camera" @click="openAIRecognition" round>
-            AI 智能识别
-          </el-button>
           <el-button type="info" :icon="Search" @click="openImageSearch" round>
             图片搜索
           </el-button>
-          <el-button v-if="userStore.user?.role === 'admin'" type="success" :icon="Clock" @click="openAIHistory" round>
-            识别历史
+          <el-button type="warning" :icon="Clock" @click="openSearchHistory" round>
+            搜索历史
           </el-button>
           <el-button type="primary" :icon="Star" @click="toggleFavoritesView" round>
             {{ showFavorites ? '全部辅料' : '我的收藏' }}
@@ -309,415 +302,13 @@
       </div>
     </div>
 
-    <!-- AI 识别弹窗 -->
-    <el-dialog 
-      v-model="aiDialogVisible" 
-      title="AI 智能辅料识别" 
-      width="70%"
-      :before-close="handleAIDialogClose"
-      destroy-on-close
-      append-to-body
-      :custom-class="'ai-recognition-dialog'"
-    >
-      <div style="max-height: 600px; overflow-y: auto; overflow-x: hidden; padding: 0 10px;">
-      <!-- 加载中状态 -->
-      <div v-if="isRecognizing" style="padding: 40px 0; text-align: center;">
-        <el-space direction="vertical" size="large">
-          <!-- Element Plus 原生加载组件 -->
-          <el-icon class="is-loading" style="font-size: 48px; color: #409EFF;"><Loading /></el-icon>
-          
-          <!-- 加载文字 -->
-          <el-text size="large">AI 正在分析图片特征...</el-text>
-          
-          <!-- 提示文字 -->
-          <el-text size="small" type="info">
-            这可能需要几秒钟时间，请耐心等待
-          </el-text>
-          
-          <!-- Element Plus 原生进度条 -->
-          <div style="width: 300px;">
-            <el-progress 
-              :percentage="recognitionProgress" 
-              :format="() => ''" 
-              :stroke-width="10"
-              :status="recognitionProgress >= 100 ? 'success' : ''"
-            />
-          </div>
-        </el-space>
-      </div>
-      
-      <!-- 上传区域 -->
-      <div v-else-if="!recognitionResult" class="upload-section">
-        <el-card :body-style="{ padding: '30px', textAlign: 'center' }">
-          <el-upload
-            drag
-            action="#"
-            :auto-upload="false"
-            :on-change="handleFileChange"
-            :on-remove="handleFileRemove"
-            :file-list="uploadedFiles"
-            list-type="picture"
-            :disabled="isRecognizing"
-            :multiple="false"
-            :class="'material-uploader'"
-          >
-            <el-icon class="el-icon--upload" style="font-size: 48px; color: #409EFF;"><upload-filled /></el-icon>
-            <div class="el-upload__text" style="font-size: 16px; margin: 20px 0;">
-              拖拽文件到此处或 <em style="color: #409EFF;">点击上传</em>
-            </div>
-            <template #tip>
-              <div class="el-upload__tip" style="margin-top: 20px;">
-                <el-text size="small" type="info">
-                  📁 支持 JPG、PNG、BMP 格式<br>
-                  📏 文件大小不超过 10MB<br>
-                  🎯 建议上传清晰的辅料图片以获得最佳识别效果
-                </el-text>
-              </div>
-            </template>
-          </el-upload>
-          
-          <!-- AI 识别按钮 -->
-          <div v-if="uploadedFiles.length > 0" style="margin-top: 30px;">
-            <el-button 
-              type="primary" 
-              size="large"
-              :icon="Camera"
-              @click="startAIRecognition"
-              :loading="isRecognizing"
-              :disabled="isRecognizing"
-              style="width: 200px; height: 50px; font-size: 16px;"
-            >
-              🔍 开始 AI 识别
-            </el-button>
-            <el-text size="small" type="info" style="display: block; margin-top: 15px;">
-              点击后 AI 将分析图片特征并识别辅料信息，预计需要几秒钟时间
-            </el-text>
-          </div>
-        </el-card>
-      </div>
-      
-      <!-- 识别结果 -->
-      <div v-else-if="recognitionResult" class="recognition-result">
-        <!-- 识别结果头部 -->
-        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
-          <el-space direction="vertical" size="small" style="width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <el-text type="primary" size="large" style="font-weight: bold;">
-                🎯 识别结果
-              </el-text>
-              <el-space>
-                <el-tag :type="getConfidenceLevel(recognitionResult.confidence)" size="large" :effect="'dark'">
-                  <el-icon style="margin-right: 5px;"><DataAnalysis /></el-icon>
-                  置信度: {{ (recognitionResult.confidence * 100).toFixed(1) }}%
-                </el-tag>
-                <el-button 
-                  size="small" 
-                  type="info" 
-                  :icon="Refresh" 
-                  @click="retryRecognition"
-                  :circle="false"
-                >
-                  重新识别
-                </el-button>
-              </el-space>
-            </div>
-          </el-space>
-        </el-card>
-        
-        <!-- 识别图片展示 -->
-        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
-          <el-text type="info" style="margin-bottom: 15px; display: block;">
-            📷 识别图片
-          </el-text>
-          <div style="display: flex; justify-content: center;">
-            <el-image
-              v-if="recognitionResult?.image || uploadedFiles[0]?.url"
-              :src="recognitionResult?.image || uploadedFiles[0]?.url"
-              fit="cover"
-              style="width: 240px; height: 240px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);"
-              @error="handleImageError"
-            >
-              <template #error>
-                <div style="width: 240px; height: 240px; border: 2px dashed #d9d9d9; border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa;">
-                  <el-empty description="图片加载失败" :image-size="80" />
-                </div>
-              </template>
-            </el-image>
-            <div v-else style="width: 240px; height: 240px; border: 2px dashed #d9d9d9; border-radius: 8px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa;">
-              <el-empty description="无识别图片" :image-size="80" />
-            </div>
-          </div>
-        </el-card>
-        
-        <!-- 识别结果标签 -->
-        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
-          <el-text type="info" style="margin-bottom: 15px; display: block;">
-            🏷️ 识别标签
-          </el-text>
-          <el-space wrap :size="15">
-            <el-tag size="large" :effect="'dark'" type="primary">{{ recognitionResult.category }}</el-tag>
-            <el-tag size="large" :effect="'dark'" type="success" v-if="recognitionResult.type">{{ recognitionResult.type }}</el-tag>
-            <el-tag size="large" :effect="'dark'" type="warning" v-if="recognitionResult.material">{{ recognitionResult.material }}</el-tag>
-            <el-tag size="large" :effect="'dark'" type="info" v-if="recognitionResult.color">{{ recognitionResult.color }}</el-tag>
-            <el-tag size="large" :effect="'dark'" type="danger" v-if="recognitionResult.auxiliaryName">{{ recognitionResult.auxiliaryName }}</el-tag>
-          </el-space>
-        </el-card>
-        
-        <!-- 上传额外图片 -->
-        <el-card :body-style="{ padding: '20px' }" style="margin-bottom: 20px;">
-          <el-text type="info" style="margin-bottom: 15px; display: block;">
-            📚 可上传更多图片（最多5张）
-          </el-text>
-          <el-upload
-            action="#"
-            :auto-upload="false"
-            :on-change="handleAdditionalFileChange"
-            :on-remove="handleAdditionalFileRemove"
-            :file-list="additionalFiles"
-            list-type="picture-card"
-            :limit="5"
-            :multiple="true"
-            :class="'additional-image-uploader'"
-          >
-            <el-icon style="font-size: 24px; color: #409EFF;"><UploadFilled /></el-icon>
-            <div class="el-upload__text" style="font-size: 14px; color: #606266;">
-              添加图片
-            </div>
-            <template #tip>
-              <div class="el-upload__tip" style="margin-top: 10px;">
-                <el-text size="small" type="info">
-                  💡 上传多张图片可提高识别准确性
-                </el-text>
-              </div>
-            </template>
-          </el-upload>
-        </el-card>
-        
-        <!-- 识别结果详情 -->
-        <el-collapse v-model="activeResultTabs" :class="'result-details-collapse'">
-          <el-collapse-item title="📋 详细信息" name="details">
-            <el-card :body-style="{ padding: '20px' }">
-              <el-descriptions border :column="1" label-width="120px">
-                <el-descriptions-item label="类别">{{ recognitionResult.category }}</el-descriptions-item>
-                <el-descriptions-item label="具体类型">{{ recognitionResult.type || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="材质">{{ recognitionResult.material || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="颜色">{{ recognitionResult.color || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="辅料名称">{{ recognitionResult.auxiliaryName || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="风格">{{ recognitionResult.style || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="辅料类别">{{ recognitionResult.auxiliaryCategory || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="工艺大类">{{ recognitionResult.processCategory || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="材料层">{{ recognitionResult.materialLayer || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="效果层">{{ recognitionResult.effectLayer || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="适用阶段">{{ recognitionResult.applicationStage || '未识别' }}</el-descriptions-item>
-                <el-descriptions-item label="描述">{{ recognitionResult.description || '未识别' }}</el-descriptions-item>
-              </el-descriptions>
-            </el-card>
-          </el-collapse-item>
-          
-          <el-collapse-item title="✏️ 人工校正" name="correction">
-            <el-card :body-style="{ padding: '20px' }">
-              <el-form :model="correctionForm" label-width="120px" :class="'correction-form'">
-                <el-row :gutter="20">
-                  <el-col :xs="24" :sm="12">
-                    <el-form-item label="校正类别">
-                      <el-select v-model="correctionForm.category" placeholder="选择类别" @change="updateAuxiliaryName" style="width: 100%;">
-                        <el-option label="面料" value="面料" />
-                        <el-option label="辅料" value="辅料" />
-                        <el-option label="扣件" value="扣件" />
-                        <el-option v-if="recognitionResult?.category" :label="recognitionResult.category" :value="recognitionResult.category">
-                          <template #default>
-                            <div style="display: flex; justify-content: space-between; width: 100%;">
-                              <span>{{ recognitionResult.category }}</span>
-                              <span style="color: #999; font-size: 12px;">AI识别</span>
-                            </div>
-                          </template>
-                        </el-option>
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12">
-                    <el-form-item label="校正具体类型">
-                      <el-select v-model="correctionForm.type" placeholder="选择具体类型" filterable allow-create @change="updateAuxiliaryName" style="width: 100%;">
-                        <el-option v-for="type in typeOptions" :key="type" :label="type" :value="type" />
-                        <el-option v-if="recognitionResult?.type" :label="recognitionResult.type" :value="recognitionResult.type">
-                          <template #default>
-                            <div style="display: flex; justify-content: space-between; width: 100%;">
-                              <span>{{ recognitionResult.type }}</span>
-                              <span style="color: #999; font-size: 12px;">AI识别</span>
-                            </div>
-                          </template>
-                        </el-option>
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12">
-                    <el-form-item label="校正材质">
-                      <el-input v-model="correctionForm.material" placeholder="输入材质，多个关键字用分号间隔" @change="updateAuxiliaryName" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12">
-                    <el-form-item label="校正颜色">
-                      <el-input v-model="correctionForm.color" placeholder="输入颜色，多个关键字用分号间隔" @change="updateAuxiliaryName" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正辅料名称">
-                      <el-input v-model="correctionForm.auxiliaryName" placeholder="输入辅料名称" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正风格">
-                      <el-input v-model="correctionForm.style" placeholder="输入风格，多个关键字用分号间隔" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正辅料类别">
-                      <el-input v-model="correctionForm.auxiliaryCategory" placeholder="输入辅料类别" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正工艺大类">
-                      <el-input v-model="correctionForm.processCategory" placeholder="输入工艺大类，多个关键字用分号间隔" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正材料层">
-                      <el-input v-model="correctionForm.materialLayer" placeholder="输入材料层" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正效果层">
-                      <el-input v-model="correctionForm.effectLayer" placeholder="输入效果层" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正适用阶段">
-                      <el-input v-model="correctionForm.applicationStage" placeholder="输入适用阶段" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24">
-                    <el-form-item label="校正描述">
-                      <el-input v-model="correctionForm.description" type="textarea" :rows="4" placeholder="输入详细描述" style="width: 100%;" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                <el-form-item style="margin-top: 20px;">
-                  <el-button type="primary" @click="saveCorrection" style="width: 120px;">
-                    <el-icon><Check /></el-icon>
-                    保存校正结果
-                  </el-button>
-                </el-form-item>
-              </el-form>
-            </el-card>
-          </el-collapse-item>
-          
-          <el-collapse-item title="🎯 相似辅料推荐" name="similar">
-            <el-card :body-style="{ padding: '20px' }">
-              <div v-if="recognitionResult.similar && recognitionResult.similar.filter(item => item.similarity > 0.5 && item.status === 1).length">
-                <el-row :gutter="20">
-                  <el-col :xs="24" :sm="12" :md="8" v-for="(item, index) in recognitionResult.similar.filter(item => item.similarity > 0.5 && item.status === 1)" :key="index">
-                    <el-card shadow="hover" :body-style="{ padding: '15px' }" :class="'similar-material-card'">
-                      <el-image 
-                        :src="item.image || 'https://via.placeholder.com/100'"
-                        loading="lazy"
-                        fit="contain" 
-                        style="width: 100%; height: 200px; border-radius: 8px; margin-bottom: 12px; background-color: #f5f7fa;"
-                      />
-                      <el-text :truncate="{ rows: 2 }" style="font-weight: 500; font-size: 14px;">
-                        {{ item.name }}
-                      </el-text>
-                      <el-text type="danger" size="small" style="display: block; margin-top: 8px;">
-                        ¥{{ item.price }}
-                      </el-text>
-                      <el-progress 
-                        :percentage="item.similarity * 100" 
-                        :format="() => `${(item.similarity * 100).toFixed(0)}%`" 
-                        :size="'small'" 
-                        style="margin-top: 12px;"
-                        :stroke-width="8"
-                      />
-                      <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
-                        <el-popover
-                        placement="top"
-                        :width="350"
-                        trigger="click"
-                      >
-                        <template #reference>
-                          <el-button type="info" size="small" :icon="View">
-                            详情
-                          </el-button>
-                        </template>
-                        <div style="padding: 15px;">
-                          <el-image 
-                            :src="item.image || 'https://via.placeholder.com/100'"
-                            fit="cover" 
-                            style="width: 100%; height: 150px; border-radius: 8px; margin-bottom: 15px;"
-                          />
-                          <el-text style="font-weight: 500; font-size: 16px;">{{ item.name || item.productName }}</el-text>
-                          <el-text type="danger" style="display: block; margin-top: 10px; font-size: 15px;">
-                            ¥{{ item.price }}
-                          </el-text>
-                          <el-text size="small" style="display: block; margin-top: 8px;">
-                            相似度: {{ (item.similarity * 100).toFixed(0) }}%
-                          </el-text>
-                          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
-                            <el-space direction="vertical" size="6">
-                              <el-text size="small">
-                                <span style="font-weight: 500;">分类:</span> {{ item.category || '未分类' }}
-                              </el-text>
-                              <el-text size="small">
-                                <span style="font-weight: 500;">材质:</span> {{ item.material || '未知' }}
-                              </el-text>
-                              <el-text size="small">
-                                <span style="font-weight: 500;">颜色:</span> {{ item.color || '未知' }}
-                              </el-text>
-                              <el-text size="small">
-                                <span style="font-weight: 500;">库存:</span> {{ item.stock || 0 }} {{ item.unit || '件' }}
-                              </el-text>
-                              <el-text size="small">
-                                <span style="font-weight: 500;">供应商:</span> {{ item.supplier || '未知' }}
-                              </el-text>
-                            </el-space>
-                          </div>
-                        </div>
-                      </el-popover>
-                      </div>
-                    </el-card>
-                  </el-col>
-                </el-row>
-              </div>
-              <div v-else style="text-align: center; padding: 40px 0;">
-                <el-empty description="暂无相似辅料推荐" :image-size="80" />
-              </div>
-            </el-card>
-          </el-collapse-item>
-        </el-collapse>
-        
-        <!-- 识别结果操作 -->
-        <div style="margin-top: 30px; display: flex; justify-content: flex-end; gap: 15px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
-          <el-button @click="handleFileRemove" :icon="Close">
-            重新上传
-          </el-button>
-          <el-button type="warning" @click="activeResultTabs = ['correction']" :icon="Edit">
-            人工校正
-          </el-button>
-          <el-button 
-            type="success" 
-            @click="confirmAddMaterial"
-            :icon="Star"
-            size="large"
-            :loading="isAddingMaterial"
-            :disabled="isAddingMaterial"
-          >
-            {{ isAddingMaterial ? '添加中...' : '添加到辅料库' }}
-          </el-button>
-        </div>
-      </div>
-      </div>
-    </el-dialog>
-
     <!-- 图片搜索弹窗 -->
     <el-dialog v-model="imageSearchVisible" title="图片搜索" width="50%" append-to-body>
+      <div style="margin-bottom: 20px;">
+        <el-text type="info" size="small">
+          💡 支持以图搜图、相似搜索，上传清晰的辅料图片以获得最佳搜索效果
+        </el-text>
+      </div>
       <el-upload
         drag
         action="#"
@@ -756,7 +347,7 @@
               <el-text type="danger" tag="b">¥{{ item.price }}</el-text>
               <el-text type="success" size="small">相似度: {{ (item.similarity * 100).toFixed(0) }}%</el-text>
             </el-space>
-            <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+            <div style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
               <el-popover
                 placement="top"
                 :width="350"
@@ -801,6 +392,9 @@
                   </div>
                 </div>
               </el-popover>
+              <el-button type="primary" size="small" :icon="ShoppingCart" @click="openProjectSchemeDialog(item)">
+                加入项目方案
+              </el-button>
             </div>
           </el-card>
         </el-col>
@@ -815,39 +409,44 @@
       </el-space>
     </el-dialog>
 
-    <el-dialog v-model="aiHistoryVisible" title="AI 识别历史" width="80%" append-to-body>
-      <el-table :data="recognitionHistory" style="width: 100%">
-        <el-table-column prop="timestamp" label="识别时间" width="180" />
-        <el-table-column prop="category" label="类别" width="100" />
-        <el-table-column prop="type" label="具体类型" width="120" />
-        <el-table-column prop="material" label="材质" width="100" />
-        <el-table-column prop="color" label="颜色" width="100" />
-        <el-table-column prop="style" label="风格" width="120" />
-        <el-table-column prop="confidence" label="置信度" width="100">
-          <template #default="scope">
-            {{ (scope.row.confidence * 100).toFixed(1) }}%
-          </template>
-        </el-table-column>
-        <el-table-column prop="image" label="图片预览" width="100">
+    <!-- 搜索历史对话框 -->
+    <el-dialog v-model="searchHistoryVisible" title="图片搜索历史" width="70%" append-to-body>
+      <div style="margin-bottom: 15px; text-align: right;">
+        <el-button type="danger" size="small" @click="clearSearchHistory">
+          清除历史
+        </el-button>
+      </div>
+      <el-table :data="searchHistory" style="width: 100%">
+        <el-table-column label="图片" width="100">
           <template #default="scope">
             <el-image 
-              v-if="scope.row.image"
-              :src="scope.row.image"
-              loading="lazy"
+              v-if="scope.row.thumbnail" 
+              :src="scope.row.thumbnail" 
               fit="cover" 
-              style="width: 50px; height: 50px; border-radius: 4px;" 
-            />
-            <el-empty v-else description="" :image-size="30" />
+              style="width: 60px; height: 60px; border-radius: 4px;"
+            >
+              <template #error>
+                <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 4px;">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
+            <div v-else style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; border-radius: 4px;">
+              <el-icon><Picture /></el-icon>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column prop="timestamp" label="搜索时间" width="180" />
+        <el-table-column prop="fileName" label="图片名称" min-width="200" />
+        <el-table-column prop="resultCount" label="搜索结果数" width="120" />
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="scope">
-            <el-button type="danger" size="small" @click="deleteRecognitionHistory(scope.row.id)">删除</el-button>
+            <el-button type="primary" size="small" @click="retrySearch(scope.row)">重新搜索</el-button>
           </template>
         </el-table-column>
       </el-table>
       
-      <el-empty v-if="recognitionHistory.length === 0" description="暂无识别历史数据" :image-size="80" />
+      <el-empty v-if="searchHistory.length === 0" description="暂无搜索历史数据" :image-size="80" />
     </el-dialog>
 
 
@@ -1000,21 +599,21 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue'
-import { Camera, Star, ShoppingCart, UploadFilled, Loading, Clock, Search, RefreshLeft, View, Refresh, ZoomIn, CopyDocument, Share, DataAnalysis, Close, Upload, Edit, Check } from '@element-plus/icons-vue'
-import { getMaterialList, recognizeMaterial, searchByImage } from '@/api/material'
+import { useRoute } from 'vue-router'
+import { Star, ShoppingCart, UploadFilled, Loading, Clock, Search, RefreshLeft, View, Refresh, ZoomIn, CopyDocument, Share, Close, Upload, Edit, Check } from '@element-plus/icons-vue'
+import { getMaterialList, searchByImage } from '@/api/material'
 import { saveProduct, updateProduct, recommendProducts, deleteProduct, collaborativeRecommend, recordBehavior } from '@/api/product'
 import { getProjectList, addMaterialToScheme } from '@/api/project'
-import { getInventoryList } from '@/api/inventory'
+
 import { uploadFile, deleteFile, checkFileExists, uploadMultipleFiles } from '@/api/file'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import ProjectSchemeDialog from '../components/ProjectSchemeDialog.vue'
 import { useUserStore } from '@/stores/user'
 import { useMaterialStore } from '@/stores/material'
-import { aiRequest } from '@/api/material'
-import { processImageUrl } from '@/utils/imageProcessor'
 
 const userStore = useUserStore()
 const materialStore = useMaterialStore()
+const route = useRoute()
 
 const materials = ref([])
 const loading = ref(false)
@@ -1040,11 +639,37 @@ const filters = reactive({
 // 筛选面板状态
 const activeFilterTabs = ref(['filters'])
 
+// 动态筛选选项
+const categoryOptions = ref([])
+const materialOptions = ref([])
+const colorOptions = ref([])
+
 // 收藏视图切换
 const showFavorites = ref(false)
 
 // 推荐视图切换
 const showRecommendations = ref(false)
+
+// 确保默认显示辅料列表
+console.log('默认显示辅料列表，showFavorites:', showFavorites.value, 'showRecommendations:', showRecommendations.value)
+
+// 监听路由变化，确保每次进入页面都刷新数据
+watch(() => route.path, (newPath) => {
+  console.log('路由路径变化:', newPath)
+  if (newPath === '/material-library') {
+    console.log('触发加载辅料数据')
+    loadMaterials()
+  }
+})
+
+// 同时监听路由完整路径，确保各种情况下都能触发
+watch(() => route.fullPath, (newFullPath) => {
+  console.log('路由完整路径变化:', newFullPath)
+  if (newFullPath.includes('/material-library')) {
+    console.log('触发加载辅料数据（完整路径）')
+    loadMaterials()
+  }
+})
 
 // Favorite functionality
 const favoriteMaterials = ref(new Set())
@@ -1213,114 +838,9 @@ watch(sortBy, () => {
   sortMaterials()
 })
 
-// AI Recognition
-const aiDialogVisible = ref(false)
-const isRecognizing = ref(false)
-const recognitionResult = ref(null)
-const uploadedFiles = ref([])
-const additionalFiles = ref([])
-const correctionForm = reactive({
-  category: '',
-  type: '',
-  material: '',
-  color: '',
-  style: '',
-  auxiliaryCategory: '',
-  auxiliaryName: '',
-  processCategory: '',
-  materialLayer: '',
-  effectLayer: '',
-  applicationStage: ''
-})
 
-// AI Recognition new variables
-const recognitionProgress = ref(0)
-const activeResultTabs = ref(['details'])
 
-// 处理文件移除
-const handleFileRemove = async () => {
-  try {
-    // 如果有文件，从MinIO中删除
-    if (uploadedFiles.value.length > 0) {
-      const fileUrl = uploadedFiles.value[0].url
-      if (fileUrl && !fileUrl.startsWith('blob:')) {
-        console.log('从MinIO中删除文件:', fileUrl)
-        await deleteFile(fileUrl)
-        console.log('文件删除成功')
-      }
-    }
-  } catch (error) {
-    console.error('删除文件失败:', error)
-    // 继续执行，不影响前端操作
-  } finally {
-    uploadedFiles.value = []
-    additionalFiles.value = []
-    recognitionResult.value = null
-    recognitionProgress.value = 0
-    // 重置校正表单
-    Object.keys(correctionForm).forEach(key => {
-      correctionForm[key] = ''
-    })
-  }
-}
 
-// 处理额外图片上传
-const handleAdditionalFileChange = (file, fileList) => {
-  console.log('处理额外文件上传:', file, fileList);
-  
-  // 过滤出有效的文件
-  const validFiles = fileList.map(f => ({
-    name: f.name,
-    url: URL.createObjectURL(f.raw),
-    uid: f.uid,
-    raw: f.raw // 保存原始文件对象，用于后续上传
-  }))
-  
-  additionalFiles.value = validFiles
-}
-
-// 处理额外图片删除
-const handleAdditionalFileRemove = (file, fileList) => {
-  console.log('处理额外文件删除:', file, fileList);
-  
-  // 过滤出剩余的文件
-  const remainingFiles = fileList.map(f => ({
-    name: f.name,
-    url: f.url,
-    uid: f.uid,
-    raw: f.raw
-  }))
-  
-  additionalFiles.value = remainingFiles
-}
-
-// Get confidence level tag type
-const getConfidenceLevel = (confidence) => {
-  if (confidence >= 0.8) return 'success'
-  if (confidence >= 0.6) return 'warning'
-  return 'danger'
-}
-
-// Retry recognition
-const retryRecognition = () => {
-  if (uploadedFiles.value.length > 0) {
-    const file = uploadedFiles.value[0]
-    console.log('重新识别，文件信息:', file);
-    if (file && file.raw) {
-      startAIRecognition()
-    } else {
-      console.error('重新识别失败：缺少原始文件对象');
-      ElMessage.error('重新识别失败：缺少原始文件对象');
-      isRecognizing.value = false;
-    }
-  }
-}
-
-// Handle AI dialog close
-const handleAIDialogClose = () => {
-  handleFileRemove()
-  aiDialogVisible.value = false
-}
 
 // 风格选项（支持动态添加和持久化）
 const styleOptions = ref([])
@@ -1360,451 +880,17 @@ const saveStyleOptions = () => {
   localStorage.setItem('materialStyles', JSON.stringify(styleOptions.value))
 }
 
-// AI Recognition History
-const aiHistoryVisible = ref(false)
-const recognitionHistory = ref([])
 
-// Load recognition history from localStorage (mock persistence)
-const loadRecognitionHistory = () => {
-  const savedHistory = localStorage.getItem('aiRecognitionHistory')
-  if (savedHistory) {
-    recognitionHistory.value = JSON.parse(savedHistory)
-  }
-}
-
-// Save recognition to history
-const saveToHistory = (result) => {
-  if (!result) return
-  
-  const historyItem = {
-    id: Date.now(),
-    timestamp: new Date().toLocaleString(),
-    category: result.category,
-    type: result.type || '未识别',
-    material: result.material,
-    color: result.color,
-    style: result.style || '未识别',
-    confidence: result.confidence,
-    image: result.image || 'https://via.placeholder.com/100'
-  }
-  
-  recognitionHistory.value.unshift(historyItem)
-  
-  // Save to localStorage (mock persistence)
-  localStorage.setItem('aiRecognitionHistory', JSON.stringify(recognitionHistory.value))
-}
-
-// 删除识别历史
-const deleteRecognitionHistory = (id) => {
-  // 从数组中删除指定id的历史记录
-  recognitionHistory.value = recognitionHistory.value.filter(item => item.id !== id)
-  // 保存到localStorage
-  localStorage.setItem('aiRecognitionHistory', JSON.stringify(recognitionHistory.value))
-  ElMessage.success('识别历史已删除')
-}
-
-// 实时更新校正辅料名称
-const updateAuxiliaryName = () => {
-  // 优先使用校正值，如果没有则使用AI识别值
-  const type = correctionForm.type || recognitionResult.value?.type
-  const category = correctionForm.category || recognitionResult.value?.category
-  const material = correctionForm.material || recognitionResult.value?.material
-  const color = correctionForm.color || recognitionResult.value?.color
-  
-  // 按照统一格式构建辅料名称：具体类型--类别--材质--颜色
-  const parts = []
-  if (type) parts.push(type)
-  if (category) parts.push(category)
-  if (material) parts.push(material)
-  if (color) parts.push(color)
-  
-  // 如果有部分值，则更新辅料名称
-  if (parts.length > 0) {
-    correctionForm.auxiliaryName = parts.join('--')
-    console.log('实时更新辅料名称:', correctionForm.auxiliaryName)
-  }
-}
-
-const saveCorrection = () => {
-  if (!recognitionResult.value) return
-  
-  // Update recognition result with corrected values
-  recognitionResult.value = {
-    ...recognitionResult.value,
-    category: correctionForm.category || recognitionResult.value.category,
-    type: correctionForm.type || recognitionResult.value.type,
-    material: correctionForm.material || recognitionResult.value.material,
-    color: correctionForm.color || recognitionResult.value.color,
-    style: correctionForm.style || recognitionResult.value.style,
-    auxiliaryCategory: correctionForm.auxiliaryCategory || recognitionResult.value.auxiliaryCategory,
-    auxiliaryName: correctionForm.auxiliaryName || recognitionResult.value.auxiliaryName,
-    processCategory: correctionForm.processCategory || recognitionResult.value.processCategory,
-    materialLayer: correctionForm.materialLayer || recognitionResult.value.materialLayer,
-    effectLayer: correctionForm.effectLayer || recognitionResult.value.effectLayer,
-    applicationStage: correctionForm.applicationStage || recognitionResult.value.applicationStage
-  }
-  
-  // 检查并添加新风格到选项列表
-  if (correctionForm.style && !styleOptions.value.includes(correctionForm.style)) {
-    styleOptions.value.push(correctionForm.style)
-    saveStyleOptions()
-  }
-  
-  // 检查并添加新具体类型到选项列表
-  if (correctionForm.type && !typeOptions.value.includes(correctionForm.type)) {
-    typeOptions.value.push(correctionForm.type)
-    saveTypeOptions()
-  }
-  
-  ElMessage.success('校正结果已保存')
-}
-
-// 生成唯一的辅料编码
-const generateProductCode = () => {
-  // 生成格式：M + 年月日 + 4位随机数
-  const date = new Date()
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const random = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
-  return `M${year}${month}${day}${random}`
-}
-
-// 确认添加辅料
-const isAddingMaterial = ref(false)
-
-const confirmAddMaterial = async () => {
-  if (!recognitionResult.value) return
-  
-  // 询问用户是否添加新辅料
-  ElMessageBox.confirm(
-    '是否将校正后的辅料添加到辅料管理中？\n\n注意：添加后需要管理员在"辅料管理"中审核并设置单价后才能上架到智能辅料库。',
-    '确认添加',
-    {
-      confirmButtonText: '添加',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      // 显示加载动画
-      isAddingMaterial.value = true
-      
-      // 检查是否有上传的文件
-      if (uploadedFiles.value.length === 0 || !uploadedFiles.value[0].raw) {
-        ElMessage.error('请先上传图片')
-        isAddingMaterial.value = false
-        return
-      }
-      
-      // 检查文件是否已存在
-      console.log('检查文件是否已存在');
-      const checkRes = await checkFileExists(uploadedFiles.value[0].raw)
-      console.log('文件检查返回结果:', checkRes);
-      
-      if (checkRes.code === 200) {
-        if (checkRes.data.exists) {
-          ElMessage.warning('该图片已存在于辅料库中，无法重复添加')
-          isAddingMaterial.value = false
-          return
-        }
-      } else {
-        throw new Error('文件检查失败: ' + checkRes.message)
-      }
-      
-      // 获取文件哈希值
-      const fileHash = checkRes.data.fileHash
-      console.log('文件哈希值:', fileHash);
-      
-      // 准备所有要上传的文件
-      console.log('准备所有要上传的文件');
-      const allFiles = [...uploadedFiles.value, ...additionalFiles.value]
-      console.log('总文件数:', allFiles.length);
-      
-      // 上传文件到MinIO
-      console.log('上传文件到MinIO');
-      let fileUrls = []
-      if (allFiles.length === 0) {
-        ElMessage.error('请先上传图片')
-        isAddingMaterial.value = false
-        return
-      } else if (allFiles.length === 1) {
-        // 单个文件上传
-        const uploadRes = await uploadFile(allFiles[0].raw)
-        console.log('文件上传返回结果:', uploadRes);
-        
-        if (uploadRes.code !== 200) {
-          throw new Error('文件上传失败: ' + uploadRes.message)
-        }
-        
-        fileUrls = [uploadRes.data]
-      } else {
-        // 多个文件上传
-        const files = allFiles.map(file => file.raw)
-        const uploadRes = await uploadMultipleFiles(files)
-        console.log('多文件上传返回结果:', uploadRes);
-        
-        if (uploadRes.code !== 200) {
-          throw new Error('文件上传失败: ' + uploadRes.message)
-        }
-        
-        fileUrls = uploadRes.data
-      }
-      
-      const fileUrl = fileUrls[0] // 第一张图片作为主图
-      
-      // 构建辅料信息，使用人工校正后的结果
-      // 确保辅料名称格式统一为"具体类型--类别--材质--颜色"
-      const buildAuxiliaryName = () => {
-        if (correctionForm.auxiliaryName) {
-          return correctionForm.auxiliaryName
-        }
-        const parts = []
-        const type = correctionForm.type || recognitionResult.value?.type
-        const category = correctionForm.category || recognitionResult.value?.category
-        const material = correctionForm.material || recognitionResult.value?.material
-        const color = correctionForm.color || recognitionResult.value?.color
-        if (type) parts.push(type)
-        if (category) parts.push(category)
-        if (material) parts.push(material)
-        if (color) parts.push(color)
-        return parts.join('--')
-      }
-      
-      const auxiliaryName = buildAuxiliaryName()
-      
-      const materialData = {
-        productCode: generateProductCode(), // 自动生成辅料编码
-        productName: auxiliaryName,
-        category: correctionForm.category || recognitionResult.value.category,
-        type: correctionForm.type || recognitionResult.value.type || '',
-        material: correctionForm.material || recognitionResult.value.material || '',
-        color: correctionForm.color || recognitionResult.value.color || '',
-        style: correctionForm.style || recognitionResult.value.style || '',
-        specification: '',
-        unit: '件',
-        price: 0,
-        expectedDeliveryDays: 0,
-        description: correctionForm.description || auxiliaryName,
-        status: 2, // 设置为待审核状态，需要管理员审核
-        imageUrl: fileUrl, // 添加主图片URL
-        image: fileUrl, // 添加image字段，确保前端可以正常显示
-        images: JSON.stringify(fileUrls), // 添加所有图片URL，使用JSON格式
-        fileHash: fileHash // 添加文件哈希值
-      }
-      
-      // 调试打印图片URL信息
-      console.log('构建的辅料信息:');
-      console.log('主图片URL:', fileUrl);
-      console.log('所有图片URL:', fileUrls);
-      
-      // 构建临时辅料信息，用于向量化
-      const tempMaterialData = {
-        ...materialData,
-        productCode: generateProductCode()
-      }
-      
-      // 首先尝试进行向量化
-      console.log('=== 向量化流程开始 ===');
-      console.log('开始向量化操作');
-      
-      // 检查上传文件是否存在
-      console.log('检查上传文件状态:');
-      console.log('uploadedFiles.value:', uploadedFiles.value);
-      console.log('uploadedFiles.value.length:', uploadedFiles.value.length);
-      console.log('第一个文件是否存在:', !!uploadedFiles.value[0]);
-      console.log('第一个文件是否有raw属性:', !!uploadedFiles.value[0]?.raw);
-      
-      if (!uploadedFiles.value || uploadedFiles.value.length === 0 || !uploadedFiles.value[0]?.raw) {
-        console.error('向量化失败: 没有可用的上传文件');
-        ElMessage.error('向量化失败：无可用文件，无法添加辅料');
-        isAddingMaterial.value = false
-        return;
-      }
-      
-      let vectorizeSuccess = false;
-      let productId = null;
-      
-      try {
-        // 首先保存辅料信息，获取productId用于向量化
-        console.log('先保存辅料信息以获取ID');
-        const saveResult = await saveProduct(materialData);
-        console.log('辅料保存返回结果:', saveResult);
-        
-        if (saveResult.code === 200 && saveResult.data && saveResult.data.id) {
-          productId = saveResult.data.id;
-          console.log('辅料保存成功，ID:', productId);
-          
-          // 调用新的向量化端点
-          console.log('调用向量化端点');
-          
-          // 创建FormData对象
-          const vectorizeFormData = new FormData();
-          vectorizeFormData.append('productId', productId);
-          vectorizeFormData.append('file', uploadedFiles.value[0].raw);
-          
-          console.log('FormData构建完成:');
-          console.log('FormData包含productId:', vectorizeFormData.has('productId'));
-          console.log('FormData包含file:', vectorizeFormData.has('file'));
-          console.log('文件大小:', uploadedFiles.value[0].raw.size, '字节');
-          console.log('文件类型:', uploadedFiles.value[0].raw.type);
-          
-          // 使用aiRequest实例发送请求，确保正确的baseURL和请求头
-          console.log('使用aiRequest发送向量化请求');
-          console.log('请求URL:', '/ai/vectorize');
-          console.log('请求方法:', 'post');
-          console.log('请求参数:', { productId, fileName: uploadedFiles.value[0].name });
-          console.log('FormData内容检查:', {
-            hasProductId: vectorizeFormData.has('productId'),
-            productIdValue: vectorizeFormData.get('productId'),
-            hasFile: vectorizeFormData.has('file'),
-            fileValue: vectorizeFormData.get('file')
-          });
-          
-          try {
-            console.log('开始发送向量化请求...');
-            const startTime = Date.now();
-            console.log('发送请求前的FormData状态:', {
-              productId: vectorizeFormData.get('productId'),
-              fileExists: !!vectorizeFormData.get('file')
-            });
-            const vectorizeData = await aiRequest({
-              url: '/ai/vectorize',
-              method: 'post',
-              data: vectorizeFormData
-            });
-            const endTime = Date.now();
-            console.log('向量化请求完成，耗时:', endTime - startTime, 'ms');
-            console.log('向量化返回结果:', vectorizeData);
-            console.log('向量化返回结果详细信息:', JSON.stringify(vectorizeData, null, 2));
-          
-            if (vectorizeData.code === 200) {
-              console.log('向量化成功');
-              vectorizeSuccess = true;
-              ElMessage.success('辅料添加成功，向量化完成');
-            } else {
-              console.error('向量化失败:', vectorizeData.message);
-              console.error('向量化失败详细信息:', JSON.stringify(vectorizeData, null, 2));
-              // 向量化失败，需要删除已保存的辅料
-              throw new Error('向量化失败: ' + vectorizeData.message);
-            }
-          } catch (vectorizeError) {
-            console.error('向量化过程中发生错误:', vectorizeError);
-            console.error('错误详情:', {
-              message: vectorizeError.message,
-              stack: vectorizeError.stack,
-              config: vectorizeError.config,
-              response: vectorizeError.response
-            });
-            
-            // 分析错误类型并提供具体的错误信息
-            let errorMessage = '向量化失败';
-            if (vectorizeError.message) {
-              if (vectorizeError.message.includes('Network Error')) {
-                errorMessage = '网络连接失败，请检查网络设置';
-              } else if (vectorizeError.message.includes('401')) {
-                errorMessage = 'API密钥无效，请检查配置';
-              } else if (vectorizeError.message.includes('403')) {
-                errorMessage = 'API权限不足，请检查权限设置';
-              } else if (vectorizeError.message.includes('408')) {
-                errorMessage = '请求超时，请检查网络连接';
-              } else if (vectorizeError.message.includes('500')) {
-                errorMessage = '服务器内部错误，请稍后重试';
-              } else if (vectorizeError.message.includes('502')) {
-                errorMessage = '网关错误，请稍后重试';
-              } else if (vectorizeError.message.includes('503')) {
-                errorMessage = '服务不可用，请稍后重试';
-              } else if (vectorizeError.message.includes('504')) {
-                errorMessage = '网关超时，请稍后重试';
-              } else {
-                errorMessage = '向量化失败: ' + vectorizeError.message;
-              }
-            } else {
-              errorMessage = '向量化失败: 未知错误';
-            }
-            
-            // 向量化失败，需要删除已保存的辅料
-            throw new Error(errorMessage);
-          }
-        } else {
-          throw new Error('辅料保存失败: ' + saveResult.message);
-        }
-      } catch (vectorizeOuterError) {
-        console.error('向量化外层异常:', vectorizeOuterError);
-        console.error('外层错误详情:', {
-          message: vectorizeOuterError.message,
-          stack: vectorizeOuterError.stack
-        });
-        
-        // 向量化失败，返回详细的错误提示
-        const errorMessage = vectorizeOuterError.message || '向量化失败：未知错误';
-        
-        // 如果已经保存了辅料，必须删除，因为向量化失败了
-        if (productId) {
-          console.log('向量化失败，删除已保存的辅料:', productId);
-          try {
-            await deleteProduct(productId);
-            console.log('已删除保存的辅料:', productId);
-          } catch (deleteError) {
-            console.error('删除辅料失败:', deleteError);
-          }
-        }
-        
-        ElMessage.error('向量化失败：' + errorMessage + '，无法添加辅料');
-        isAddingMaterial.value = false
-        return;
-      }
-      
-      // 只有向量化成功后，才显示成功提示
-      if (vectorizeSuccess) {
-        // 显示成功提示
-        ElMessage.success('辅料已成功添加到待审核列表，请等待管理员审核')
-        
-        // 询问管理员是否需要进行AI识别
-        if (userStore.user?.role === 'admin') {
-          ElMessageBox.confirm(
-            '辅料添加成功！是否需要对该辅料进行AI识别分析？',
-            'AI识别询问',
-            {
-              confirmButtonText: '是',
-              cancelButtonText: '否',
-              type: 'info'
-            }
-          ).then(() => {
-            // 打开AI识别对话框
-            aiDialogVisible.value = true
-            // 可以在这里预填充相关信息
-            console.log('打开AI识别对话框');
-          }).catch(() => {
-            // 用户取消，不执行任何操作
-          })
-        }
-      }
-      
-      // 关闭AI识别对话框
-      aiDialogVisible.value = false
-      
-      // 重置相关状态
-      recognitionResult.value = null
-      uploadedFiles.value = []
-      additionalFiles.value = []
-      recognitionProgress.value = 0
-      isAddingMaterial.value = false
-    } catch (error) {
-      console.error('添加辅料失败:', error)
-      ElMessage.error('添加辅料失败，请稍后重试')
-      isAddingMaterial.value = false
-    }
-  }).catch(() => {
-    // 用户取消，不执行任何操作
-  })
-}
 
 // Image Search
 const imageSearchVisible = ref(false)
 const isSearching = ref(false)
 const searchImageResult = ref(null)
 const imageSearchFiles = ref([])
+
+// Search History
+const searchHistoryVisible = ref(false)
+const searchHistory = ref([])
 
 // Detail
 const detailPopover = ref(null)
@@ -1843,32 +929,59 @@ const editRules = {
 }
 
 const loadMaterials = async () => {
+  console.log('=== 开始加载辅料数据 ===')
+  console.log('当前时间:', new Date().toLocaleString())
   loading.value = true
   try {
     // 获取辅料列表数据
+    console.log('准备发送请求获取辅料列表')
+    console.log('调用getMaterialList()')
     const res = await getMaterialList()
+    console.log('收到响应:', res)
+    console.log('响应类型:', typeof res)
+    console.log('响应是否为空:', res === null || res === undefined)
+    
+    // 检查响应数据结构
+    if (!res) {
+      console.error('响应为空')
+      ElMessage.error('加载辅料列表失败: 响应为空')
+      // 即使响应为空，也要设置空数组，确保页面显示正常
+      materials.value = []
+      allMaterials.value = []
+      total.value = 0
+      return
+    }
+    
     if (res.code === 200) {
       let materialData = res.data || []
+      console.log('原始辅料数据:', materialData)
+      console.log('原始辅料数据数量:', materialData.length)
+      console.log('辅料状态分布:', materialData.map(item => item.status))
       
-      // 只显示已上架的辅料（status = 1）
-      materialData = materialData.filter(item => item.status === 1)
+      // 只显示已上架的辅料（status === 1）
+      console.log('原始辅料数据数量:', materialData.length)
+      console.log('辅料状态分布:', materialData.map(item => item.status))
       
-      // 获取库存数据
-      const inventoryRes = await getInventoryList()
-      const inventoryData = inventoryRes.data || []
-      
-      // 创建库存数据的映射，使用产品编码作为键
-      const inventoryMap = new Map()
-      inventoryData.forEach(inv => {
-        const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
-        if (productCode) {
-          inventoryMap.set(productCode, inv)
-        }
+      // 过滤出已上架的辅料（状态为1），同时处理状态值为null或undefined的情况
+      console.log('原始辅料数据状态分布:', materialData.map(item => ({ id: item.id, status: item.status, productName: item.productName })))
+      const activeMaterials = materialData.filter(item => {
+        // 确保status字段存在且为数字1
+        return item.status === 1
       })
+      console.log('已上架辅料数量:', activeMaterials.length)
+      console.log('已上架辅料详情:', activeMaterials.map(item => ({ id: item.id, status: item.status, productName: item.productName })))
       
-      // 合并辅料数据和库存数据
-      materials.value = materialData.map(item => {
-        const inventory = inventoryMap.get(item.productCode)
+      // 如果没有状态为1的辅料，尝试显示所有非删除状态的辅料（状态不为-1）
+      let finalMaterials = activeMaterials
+      if (finalMaterials.length === 0) {
+        console.log('没有状态为1的辅料，尝试显示所有非删除状态的辅料')
+        finalMaterials = materialData.filter(item => item.status !== -1)
+        console.log('非删除状态辅料数量:', finalMaterials.length)
+        console.log('非删除状态辅料详情:', finalMaterials.map(item => ({ id: item.id, status: item.status, productName: item.productName })))
+      }
+      
+      // 处理辅料数据
+      const processedMaterials = finalMaterials.map(item => {
         
         // 处理图片字段
         let imageUrl = item.imageUrl || item.image
@@ -1936,29 +1049,105 @@ const loadMaterials = async () => {
         return {
           ...item,
           image: imageUrl, // 确保图片字段可用
-          stock: inventory?.quantity || 0 // 使用真实库存数据，默认值为0
+          stock: item.stock || 0 // 使用产品自身的库存数据，默认值为0
         }
       })
       
-      // 存储所有数据用于分页
-      allMaterials.value = materials.value
+      // 应用筛选条件
+      let filteredMaterials = processedMaterials
+      
+      // 关键字搜索
+      if (filters.keyword) {
+        const keyword = filters.keyword.toLowerCase()
+        filteredMaterials = filteredMaterials.filter(item => 
+          (item.productName?.toLowerCase().includes(keyword) || 
+           item.productCode?.toLowerCase().includes(keyword) || 
+           item.description?.toLowerCase().includes(keyword))
+        )
+      }
+      
+      // 分类筛选
+      if (filters.category) {
+        filteredMaterials = filteredMaterials.filter(item => item.category === filters.category)
+      }
+      
+      // 材质筛选
+      if (filters.material) {
+        filteredMaterials = filteredMaterials.filter(item => item.material === filters.material)
+      }
+      
+      // 颜色筛选
+      if (filters.color) {
+        filteredMaterials = filteredMaterials.filter(item => item.color === filters.color)
+      }
+      
+      // 价格范围筛选
+      if (filters.minPrice !== '' && filters.minPrice !== null) {
+        filteredMaterials = filteredMaterials.filter(item => item.price >= filters.minPrice)
+      }
+      if (filters.maxPrice !== '' && filters.maxPrice !== null) {
+        filteredMaterials = filteredMaterials.filter(item => item.price <= filters.maxPrice)
+      }
+      
+      // 库存筛选
+      if (filters.inStock !== null) {
+        if (filters.inStock) {
+          filteredMaterials = filteredMaterials.filter(item => item.stock > 0)
+        } else {
+          filteredMaterials = filteredMaterials.filter(item => item.stock <= 0)
+        }
+      }
+      
+      // 存储筛选后的数据用于分页
+      allMaterials.value = filteredMaterials
       total.value = allMaterials.value.length
       currentPage.value = 1
+      console.log('调用updatePagination前 - allMaterials:', allMaterials.value)
+      console.log('调用updatePagination前 - allMaterials.length:', allMaterials.value.length)
+      console.log('调用updatePagination前 - total:', total.value)
+      console.log('调用updatePagination前 - currentPage:', currentPage.value)
+      // 使用updatePagination()处理分页
       updatePagination()
+      console.log('调用updatePagination后 - materials:', materials.value)
+      console.log('调用updatePagination后 - materials.length:', materials.value.length)
+      // 强制更新页面
+      console.log('强制更新页面')
+      materials.value = [...materials.value]
+      
+      // 提取唯一的分类、材质、颜色选项（基于筛选前的所有数据）
+      extractFilterOptions(processedMaterials)
       
       // 调试打印辅料数据
-      console.log('加载的辅料数据:', materials.value)
-      console.log('图片URL示例:', materials.value.map(item => ({ 
+      console.log('加载的辅料数据:', processedMaterials)
+      console.log('图片URL示例:', processedMaterials.map(item => ({ 
         name: item.productName, 
         image: item.image 
       })))
       console.log('总辅料数量:', total.value)
+    } else {
+      console.error('响应代码不是200:', res)
+      ElMessage.error('加载辅料列表失败: ' + (res.message || '未知错误'))
+      // 即使响应失败，也要设置空数组，确保页面显示正常
+      materials.value = []
+      allMaterials.value = []
+      total.value = 0
     }
   } catch (error) {
     console.error('加载辅料列表失败:', error)
-    ElMessage.error('加载辅料列表失败')
+    console.error('错误详情:', error)
+    // 友好的错误提示
+    if (error.message.includes('Network Error')) {
+      ElMessage.error('网络连接失败，请检查后端服务是否运行')
+    } else {
+      ElMessage.error('加载辅料列表失败: ' + (error.message || '网络错误'))
+    }
+    // 即使出错，也要设置空数组，确保页面显示正常
+    materials.value = []
+    allMaterials.value = []
+    total.value = 0
   } finally {
     loading.value = false
+    console.log('加载辅料数据完成')
   }
 }
 
@@ -1978,10 +1167,29 @@ const resetFilters = () => {
   loadMaterials()
 }
 
-const openAIRecognition = () => {
-  recognitionResult.value = null
-  isRecognizing.value = false
-  aiDialogVisible.value = true
+// 提取筛选选项
+const extractFilterOptions = (materials) => {
+  // 提取唯一的分类
+  const categories = new Set()
+  // 提取唯一的材质
+  const materialsSet = new Set()
+  // 提取唯一的颜色
+  const colors = new Set()
+  
+  materials.forEach(item => {
+    if (item.category) categories.add(item.category)
+    if (item.material) materialsSet.add(item.material)
+    if (item.color) colors.add(item.color)
+  })
+  
+  // 更新选项
+  categoryOptions.value = Array.from(categories).map(cat => ({ label: cat, value: cat }))
+  materialOptions.value = Array.from(materialsSet).map(mat => ({ label: mat, value: mat }))
+  colorOptions.value = Array.from(colors).map(col => ({ label: col, value: col }))
+  
+  console.log('提取的分类选项:', categoryOptions.value)
+  console.log('提取的材质选项:', materialOptions.value)
+  console.log('提取的颜色选项:', colorOptions.value)
 }
 
 // 添加辅料对话框
@@ -2007,188 +1215,6 @@ const addMaterialRules = {
   productName: [{ required: true, message: '请输入辅料名称', trigger: 'blur' }],
   category: [{ required: true, message: '请选择分类', trigger: 'change' }],
   price: [{ required: true, message: '请输入单价', trigger: 'blur' }]
-}
-
-// 处理文件上传（只预览，不自动识别）
-const handleFileChange = (file) => {
-  console.log('开始处理文件上传:', file);
-  console.log('文件对象结构:', {
-    name: file.name,
-    size: file.size,
-    type: file.type,
-    raw: file.raw,
-    hasRaw: !!file.raw
-  });
-  
-  recognitionResult.value = null
-  recognitionProgress.value = 0
-  
-  try {
-    // 使用临时URL进行预览，不上传到MinIO
-    console.log('使用临时URL进行预览');
-    const tempUrl = URL.createObjectURL(file.raw)
-    
-    // 添加文件到上传列表
-    uploadedFiles.value = [{
-      name: file.name,
-      url: tempUrl,
-      uid: file.uid,
-      raw: file.raw // 保存原始文件对象，用于后续上传
-    }]
-    
-    ElMessage.success('图片上传成功，请点击"开始 AI 识别"按钮进行分析')
-  } catch (error) {
-    console.error('处理文件失败:', error)
-    ElMessage.error(`处理失败: ${error.message || '未知错误'}`)
-  }
-}
-
-// 开始AI识别
-const startAIRecognition = async () => {
-  if (uploadedFiles.value.length === 0 || !uploadedFiles.value[0].raw) {
-    ElMessage.warning('请先上传图片')
-    return
-  }
-  
-  const file = uploadedFiles.value[0]
-  isRecognizing.value = true
-  recognitionResult.value = null
-  recognitionProgress.value = 0
-  
-  // 更新进度条的函数
-  const updateProgress = (progress) => {
-    // 确保进度值在0-100之间
-    recognitionProgress.value = Math.min(100, Math.max(0, progress))
-  }
-  
-  try {
-    // 开始识别
-    console.log('开始AI识别流程');
-    updateProgress(0)
-    
-    // 模拟进度更新
-    let currentProgress = 0
-    const progressInterval = setInterval(() => {
-      if (currentProgress < 90) {
-        currentProgress += 2
-        updateProgress(currentProgress)
-      }
-    }, 100)
-    
-    // 调用AI识别API
-    console.log('调用recognizeMaterial API');
-    
-    console.log('准备调用recognizeMaterial函数');
-    const res = await recognizeMaterial({ raw: file.raw, name: file.name, uid: file.uid })
-    
-    // 清除进度更新定时器
-    clearInterval(progressInterval)
-    
-    // 平滑过渡到100%
-    const finalProgressInterval = setInterval(() => {
-      if (recognitionProgress.value < 100) {
-        recognitionProgress.value += 5
-      } else {
-        clearInterval(finalProgressInterval)
-      }
-    }, 50)
-    
-    // 等待进度条达到100%
-    await new Promise(resolve => {
-      const checkProgress = setInterval(() => {
-        if (recognitionProgress.value >= 100) {
-          clearInterval(checkProgress)
-          resolve()
-        }
-      }, 50)
-    })
-    
-    console.log('API调用返回结果:', res);
-    
-    if (res.code === 200) {
-      // 检查返回的数据是否为空
-      if (!res.data) {
-        ElMessage.warning('API返回数据为空，请重试')
-        console.warn('API返回数据为空:', res)
-        return
-      }
-      
-      // 检查返回的数据是否有效
-      const isDataValid = Object.values(res.data).some(value => 
-        value !== '未识别' && value !== '' && 
-        (!Array.isArray(value) || value.length > 0)
-      )
-      
-      if (!isDataValid) {
-        ElMessage.warning('未识别出辅料信息，请尝试上传清晰的图片')
-        console.warn('API返回数据无效:', res.data)
-      }
-      
-      // 上传图片以获取持久化的URL
-      let persistentImageUrl = file.url // 默认使用临时URL
-      try {
-        console.log('开始上传图片以获取持久化URL...')
-        const uploadRes = await uploadFile(file.raw)
-        if (uploadRes.code === 200 && uploadRes.data) {
-          persistentImageUrl = uploadRes.data
-          console.log('图片上传成功，获取到持久化URL:', persistentImageUrl)
-        } else {
-          console.warn('图片上传失败，将使用临时URL:', uploadRes)
-        }
-      } catch (error) {
-        console.error('上传图片失败:', error)
-        // 继续使用临时URL，不影响识别流程
-      }
-      
-      // 处理图片URL，确保格式正确
-      const processedImageUrl = processImageUrl(persistentImageUrl)
-      console.log('处理后的图片URL:', processedImageUrl)
-      
-      // 保存识别结果，包含处理后的图片URL
-      const resultWithImage = {
-        ...res.data,
-        image: processedImageUrl || persistentImageUrl // 使用处理后的URL或原始URL
-      }
-      
-      // 确保图片URL格式正确
-      if (resultWithImage.image) {
-        console.log('识别结果图片URL:', resultWithImage.image)
-      }
-      
-      recognitionResult.value = resultWithImage
-      // Auto-fill correction form with recognition results
-      correctionForm.category = resultWithImage.category
-      correctionForm.type = resultWithImage.type
-      correctionForm.material = resultWithImage.material
-      correctionForm.color = resultWithImage.color
-      correctionForm.style = resultWithImage.style || ''
-      correctionForm.auxiliaryCategory = resultWithImage.auxiliaryCategory || ''
-      correctionForm.auxiliaryName = resultWithImage.auxiliaryName || ''
-      correctionForm.processCategory = resultWithImage.processCategory || ''
-      correctionForm.materialLayer = resultWithImage.materialLayer || ''
-      correctionForm.effectLayer = resultWithImage.effectLayer || ''
-      correctionForm.applicationStage = resultWithImage.applicationStage || ''
-      correctionForm.description = resultWithImage.description || ''
-      
-      // Save to recognition history
-      saveToHistory(resultWithImage)
-      
-      ElMessage.success('AI识别完成')
-    }
-  } catch (error) {
-    console.error('AI识别失败:', error)
-    ElMessage.error(`识别失败: ${error.message || '未知错误'}`)
-  } finally {
-    // 确保进度条达到100%
-    if (recognitionResult.value) {
-      recognitionProgress.value = 100
-    }
-    // 延迟设置isRecognizing为false，确保用户能看到完成状态
-    setTimeout(() => {
-      console.log('设置isRecognizing为false');
-      isRecognizing.value = false
-    }, 500)
-  }
 }
 
 // 提交添加辅料
@@ -2217,14 +1243,81 @@ const submitAddMaterial = async () => {
   })
 }
 
-const openAIHistory = () => {
-  loadRecognitionHistory()
-  aiHistoryVisible.value = true
-}
-
 const openImageSearch = () => {
   searchImageResult.value = null
   imageSearchVisible.value = true
+}
+
+const openSearchHistory = () => {
+  loadSearchHistory()
+  searchHistoryVisible.value = true
+}
+
+const loadSearchHistory = () => {
+  try {
+    const history = localStorage.getItem('imageSearchHistory')
+    if (history) {
+      searchHistory.value = JSON.parse(history)
+    } else {
+      searchHistory.value = []
+    }
+  } catch (error) {
+    console.error('加载搜索历史失败:', error)
+    searchHistory.value = []
+  }
+}
+
+const saveSearchHistory = (fileName, resultCount, thumbnail) => {
+  try {
+    // 加载现有历史
+    loadSearchHistory()
+    
+    // 创建新的历史记录
+    const newHistory = {
+      id: Date.now(),
+      fileName,
+      resultCount,
+      timestamp: new Date().toLocaleString(),
+      thumbnail
+    }
+    
+    // 添加到历史记录开头
+    searchHistory.value.unshift(newHistory)
+    
+    // 限制最多保存8条记录
+    if (searchHistory.value.length > 8) {
+      searchHistory.value = searchHistory.value.slice(0, 8)
+    }
+    
+    // 保存到localStorage
+    localStorage.setItem('imageSearchHistory', JSON.stringify(searchHistory.value))
+  } catch (error) {
+    console.error('保存搜索历史失败:', error)
+  }
+}
+
+const retrySearch = (historyItem) => {
+  // 由于搜索历史中只保存了文件名，没有保存实际的图片文件
+  // 所以这里提示用户需要重新上传图片
+  ElMessage.info('请重新上传图片以执行搜索')
+  searchHistoryVisible.value = false
+  openImageSearch()
+}
+
+const clearSearchHistory = () => {
+  ElMessageBox.confirm('确定要清除所有搜索历史吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 清空搜索历史
+    searchHistory.value = []
+    // 清除localStorage中的数据
+    localStorage.removeItem('imageSearchHistory')
+    ElMessage.success('搜索历史已清除')
+  }).catch(() => {
+    // 取消清除
+  })
 }
 
 const handleImageSearchFileRemove = (file, fileList) => {
@@ -2266,41 +1359,91 @@ const handleImageSearchFileChange = async (file, fileList) => {
     console.log('文件验证通过，开始调用API');
     
     // 调用真实的图片搜索 API（不再需要单独上传到 MinIO）
-    const [res, inventoryRes] = await Promise.all([
-      searchByImage(file, 10, 0.6), // limit=10, threshold=0.6
-      getInventoryList()
-    ])
+    const res = await searchByImage(file, 10, 0.6) // limit=10, threshold=0.6
     
     console.log('API调用完成，响应结果:', res);
-    console.log('库存数据:', inventoryRes);
     if (res.code === 200) {
       console.log('图片搜索成功，结果数量:', res.data ? res.data.length : 0);
       
-      // 构建库存映射
-      const inventoryData = inventoryRes.data || []
-      const inventoryMap = new Map()
-      
-      inventoryData.forEach(inv => {
-        const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
-        if (productCode) {
-          inventoryMap.set(productCode, inv)
+      // 处理搜索结果，添加相似度格式化和图片URL处理
+      searchImageResult.value = (res.data || [])
+        .filter(item => item.status === 1) // 只显示已上架的辅料
+        .map(item => {
+        
+        // 处理图片字段
+        let imageUrl = item.imageUrl || item.image
+        
+        // 优先处理images字段（JSON格式的图片数组）
+        if (item.images) {
+          try {
+            // 处理可能的字符串包裹情况
+            let imagesStr = item.images
+            if (typeof imagesStr === 'string' && imagesStr.startsWith('"') && imagesStr.endsWith('"')) {
+              imagesStr = imagesStr.substring(1, imagesStr.length - 1)
+            }
+            
+            const images = JSON.parse(imagesStr)
+            if (Array.isArray(images) && images.length > 0) {
+              imageUrl = images[0] // 使用第一张图片作为主图
+            }
+          } catch (e) {
+            console.error('解析图片列表失败:', e, '原始数据:', item.images)
+          }
         }
-      })
-      
-      // 处理搜索结果，添加库存信息和相似度格式化
-      searchImageResult.value = (res.data || []).map(item => {
-        const inventory = inventoryMap.get(item.productCode)
+        
+        // 如果imageUrl仍然是"上传成功"，尝试从images字段获取
+        if (imageUrl === '上传成功' && item.images) {
+          try {
+            // 处理可能的字符串包裹情况
+            let imagesStr = item.images
+            if (typeof imagesStr === 'string' && imagesStr.startsWith('"') && imagesStr.endsWith('"')) {
+              imagesStr = imagesStr.substring(1, imagesStr.length - 1)
+            }
+            
+            const images = JSON.parse(imagesStr)
+            if (Array.isArray(images) && images.length > 0) {
+              imageUrl = images[0] // 使用第一张图片作为主图
+            }
+          } catch (e) {
+            console.error('解析图片列表失败:', e, '原始数据:', item.images)
+          }
+        }
+        
+        // 使用processImageUrl工具函数处理图片URL
+        const processedImageUrl = processImageUrl(imageUrl)
+        
+        console.log('辅料名称:', item.productName);
+        console.log('原始图片URL:', imageUrl);
+        console.log('处理后的图片URL:', processedImageUrl);
+        
         return {
           ...item,
-          stock: inventory ? (inventory.quantity || 0) : 0,
+          image: processedImageUrl, // 确保图片字段可用
+          stock: item.stock || 0,
           similarityFormatted: item.similarity ? (item.similarity * 100).toFixed(1) + '%' : 'N/A'
         }
       })
       
-      if (searchImageResult.value.length === 0) {
+      // 计算实际显示的搜索结果数量（相似度 > 0.65）
+      const actualResultCount = searchImageResult.value.filter(item => item.similarity > 0.65).length
+      
+      if (actualResultCount === 0) {
         ElMessage.info('未找到相似辅料，请尝试其他图片')
+        // 保存搜索历史（无缩略图）
+        saveSearchHistory(file.name, actualResultCount, null)
       } else {
-        ElMessage.success(`找到 ${searchImageResult.value.length} 个相似辅料`)
+        ElMessage.success(`找到 ${actualResultCount} 个相似辅料`)
+        // 生成并保存缩略图
+        generateThumbnail(file.raw)
+          .then(thumbnail => {
+            // 保存搜索历史
+            saveSearchHistory(file.name, actualResultCount, thumbnail)
+          })
+          .catch(error => {
+            console.error('生成缩略图失败:', error)
+            // 保存搜索历史（无缩略图）
+            saveSearchHistory(file.name, actualResultCount, null)
+          })
       }
     } else {
       throw new Error(res.message || '搜索失败')
@@ -2314,32 +1457,8 @@ const handleImageSearchFileChange = async (file, fileList) => {
 }
 
 const showDetail = async (item, event) => {
-  // 获取真实库存数据
-  try {
-    const inventoryRes = await getInventoryList()
-    const inventoryData = inventoryRes.data || []
-    const inventoryMap = new Map()
-    
-    inventoryData.forEach(inv => {
-      // 使用产品编码或物料编码作为键，确保能正确匹配
-      const productCode = inv.productCode || inv.materialCode || inv.product_code || inv.material_code
-      if (productCode) {
-        inventoryMap.set(productCode, inv)
-      }
-    })
-    
-    // 更新当前物料的库存数据
-    const inventory = inventoryMap.get(item.productCode)
-    if (inventory) {
-      item.stock = inventory.quantity || 0
-    } else {
-      item.stock = 0
-    }
-  } catch (error) {
-    console.error('获取库存数据失败:', error)
-    // 如果获取失败，使用默认值 0
-    item.stock = 0
-  }
+  // 使用产品自身的库存数据
+  item.stock = item.stock || 0
   
   // 记录浏览行为
   if (userStore.user?.id) {
@@ -2391,6 +1510,90 @@ const getProcessedImageUrl = (material) => {
   return ''
 }
 
+// 处理图片URL的工具函数
+const processImageUrl = (imageUrl) => {
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return null
+  }
+  
+  // 过滤掉错误的图片URL
+  if (imageUrl === '上传成功' || imageUrl === '[]') {
+    return null
+  }
+  
+  // 处理HTTP开头的URL
+  if (imageUrl.startsWith('http')) {
+    // 提取文件名（忽略bucket名称）
+    const lastSlashIndex = imageUrl.lastIndexOf('/')
+    if (lastSlashIndex !== -1) {
+      const filename = imageUrl.substring(lastSlashIndex + 1)
+      // 使用后端接口获取图片，避免MinIO认证问题
+      return `/file/get-image?filename=${filename}`
+    }
+  } else if (!imageUrl.startsWith('/file/get-image')) {
+    // 如果不是http开头也不是/file/get-image格式，直接使用文件名
+    return `/file/get-image?filename=${imageUrl}`
+  }
+  
+  // 保留已经是/file/get-image格式的URL
+  return imageUrl
+}
+
+// 生成图片缩略图的函数
+const generateThumbnail = (file) => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+    
+    img.onload = () => {
+      // 设置缩略图尺寸
+      const maxWidth = 100
+      const maxHeight = 100
+      let width = img.width
+      let height = img.height
+      
+      // 计算缩放比例
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width
+          width = maxWidth
+        }
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height
+          height = maxHeight
+        }
+      }
+      
+      // 设置canvas尺寸
+      canvas.width = width
+      canvas.height = height
+      
+      // 绘制缩略图
+      ctx.drawImage(img, 0, 0, width, height)
+      
+      // 转换为base64格式
+      const thumbnailBase64 = canvas.toDataURL('image/jpeg', 0.7)
+      resolve(thumbnailBase64)
+    }
+    
+    img.onerror = () => {
+      reject(new Error('图片加载失败'))
+    }
+    
+    // 读取文件并设置图片源
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      img.src = e.target.result
+    }
+    reader.onerror = () => {
+      reject(new Error('文件读取失败'))
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 // 获取图片预览列表
 const getImagePreviewList = (material) => {
   if (!material) return []
@@ -2437,11 +1640,7 @@ const getImagePreviewList = (material) => {
   return images
 }
 
-// 处理图片加载错误
-const handleImageError = (e) => {
-  console.error('图片加载失败:', e)
-  // 错误处理逻辑已在template中通过error插槽实现
-}
+
 
 // 调试打印辅料数据
 const debugMaterialData = () => {
@@ -2599,17 +1798,36 @@ const handleCurrentChange = (current) => {
 
 // 更新分页数据
 const updatePagination = () => {
+  console.log('updatePagination - allMaterials.length:', allMaterials.value.length)
+  console.log('updatePagination - currentPage:', currentPage.value)
+  console.log('updatePagination - pageSize:', pageSize.value)
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
+  console.log('updatePagination - start:', start)
+  console.log('updatePagination - end:', end)
   materials.value = allMaterials.value.slice(start, end)
+  console.log('updatePagination - materials.length:', materials.value.length)
+  console.log('updatePagination - materials:', materials.value)
 }
 
-onMounted(() => {
+onMounted(async () => {
+  console.log('=== 组件挂载开始 ===')
+  console.log('当前路由路径:', window.location.pathname)
+  console.log('当前路由完整路径:', window.location.href)
+  
+  console.log('1. 加载风格选项')
   loadStyleOptions()
+  console.log('2. 加载类型选项')
   loadTypeOptions()
-  loadMaterials()
-  loadRecognitionHistory()
+  console.log('3. 加载收藏列表')
   loadFavorites()
+  
+  console.log('4. 重置筛选条件')
+  resetFilters()
+  console.log('5. 开始加载辅料数据')
+  // 直接调用loadMaterials()，不使用try-catch，确保错误能够被正确捕获和处理
+  loadMaterials()
+  console.log('=== 组件挂载完成 ===')
 })
 
 // 组件卸载时

@@ -3,44 +3,45 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20">
       <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-item">
-            <div class="stat-icon" style="background: #409eff;">
-              <el-icon size="30"><List /></el-icon>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats.pendingTasks }}</div>
-              <div class="stat-label">今日待办/待审任务</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6" v-if="userStore.user?.role === 'admin'">
-        <el-card class="stat-card">
-          <div class="stat-item">
-            <div class="stat-icon" style="background: #e6a23c;">
+        <el-card class="stat-card" @click="goToInventoryManagement">
+          <div class="stat-item" style="cursor: pointer;">
+            <div class="stat-icon" style="background: #f56c6c;">
               <el-icon size="30"><Warning /></el-icon>
             </div>
             <div class="stat-content">
-              <div class="stat-value">{{ stats.inventoryAlerts }}</div>
+              <div class="stat-value">{{ stats.pendingTasks }}</div>
               <div class="stat-label">库存预警</div>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6" v-else>
-        <el-card class="stat-card">
-          <div class="stat-item">
-            <div class="stat-icon" style="background: #909399;">
-              <el-icon size="30"><Clock /></el-icon>
+      <el-col :span="6" v-if="userStore.user?.role === 'admin'">
+        <el-card class="stat-card" @click="goToNotificationCenter">
+          <div class="stat-item" style="cursor: pointer;">
+            <div class="stat-icon" style="background: #f56c6c;">
+              <el-icon size="30"><Bell /></el-icon>
             </div>
             <div class="stat-content">
-              <div class="stat-value">{{ stats.personalTasks }}</div>
-              <div class="stat-label">个人待办任务</div>
+              <div class="stat-value">{{ unreadCount || 0 }}</div>
+              <div class="stat-label">未读消息</div>
             </div>
           </div>
         </el-card>
       </el-col>
+      <el-col :span="6" v-else>
+        <el-card class="stat-card" @click="goToNotificationCenter">
+          <div class="stat-item" style="cursor: pointer;">
+            <div class="stat-icon" style="background: #f56c6c;">
+              <el-icon size="30"><Bell /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ unreadCount || 0 }}</div>
+              <div class="stat-label">未读消息</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-item">
@@ -138,16 +139,19 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top: 20px;">
-      <!-- 进行中项目 -->
+      <!-- 进行中项目 / 低库存产品列表 -->
       <el-col :span="12">
         <el-card class="dashboard-card">
           <template #header>
             <div class="card-header">
-              <span>进行中项目</span>
-              <el-button text @click="goToProjectManagement">查看全部</el-button>
+              <span v-if="userStore.user?.role !== 'admin'">进行中项目</span>
+              <span v-else>低库存产品</span>
+              <el-button v-if="userStore.user?.role !== 'admin'" text @click="goToProjectManagement">查看全部</el-button>
+              <el-button v-else text @click="goToMaterialLibrary">查看全部</el-button>
             </div>
           </template>
-          <div class="project-list">
+          <!-- 非管理员显示进行中项目 -->
+          <div v-if="userStore.user?.role !== 'admin'" class="project-list">
             <div v-for="project in activeProjects" :key="project.id" class="project-item card">
               <div class="project-header">
                 <div class="project-name">{{ project.projectName }}</div>
@@ -169,53 +173,43 @@
               <el-empty description="暂无进行中项目" />
             </div>
           </div>
-        </el-card>
-      </el-col>
-
-      <!-- 库存预警 -->
-      <el-col :span="12" v-if="userStore.user?.role === 'admin'">
-        <el-card class="dashboard-card">
-          <template #header>
-            <div class="card-header">
-              <span>库存预警</span>
-              <el-button text @click="goToInventoryManagement">查看全部</el-button>
-            </div>
-          </template>
-          <div class="inventory-alerts">
-            <div v-for="item in inventoryAlerts" :key="item.id" class="alert-item card">
+          <!-- 管理员显示低库存产品列表 -->
+          <div v-else class="inventory-alerts">
+            <div v-for="product in lowStockProducts" :key="product.id" class="alert-item card">
               <div class="alert-icon">
-                <el-icon color="#e6a23c" size="20"><Warning /></el-icon>
+                <el-icon size="20" style="color: #f56c6c;"><Warning /></el-icon>
               </div>
               <div class="alert-content">
-                <div class="alert-name">{{ item.name }}</div>
+                <div class="alert-name">{{ product.productName }}</div>
                 <div class="alert-stock-info">
                   <div class="stock-item">
                     <span class="stock-label">当前库存:</span>
-                    <span class="stock-value warning">{{ item.quantity }}</span>
+                    <span class="stock-value warning">{{ product.stock || 0 }}</span>
                   </div>
                   <div class="stock-item">
                     <span class="stock-label">预警阈值:</span>
-                    <span class="stock-value normal">{{ item.threshold }}</span>
+                    <span class="stock-value normal">{{ product.alertThreshold || 10 }}</span>
                   </div>
-                  <div class="stock-progress">
-                    <el-progress 
-                      :percentage="(item.quantity / item.threshold) * 100" 
-                      :stroke-width="6" 
-                      :show-text="false" 
-                      :color="['#f56c6c', '#e6a23c', '#67c23a']" 
-                    />
-                  </div>
+                </div>
+                <div class="stock-progress">
+                  <el-progress 
+                    :percentage="Math.min(100, ((product.stock || 0) / (product.alertThreshold || 10)) * 100)" 
+                    :stroke-width="8" 
+                    :color="(product.stock || 0) <= (product.alertThreshold || 10) ? '#f56c6c' : '#67c23a'" 
+                  />
                 </div>
               </div>
             </div>
-            <div v-if="inventoryAlerts.length === 0" class="no-alerts">
+            <div v-if="lowStockProducts.length === 0" class="no-alerts">
               <el-empty description="暂无库存预警" />
             </div>
           </div>
         </el-card>
       </el-col>
+
+
       <!-- 个人项目进度概览 -->
-      <el-col :span="12" v-else>
+      <el-col :span="12">
         <el-card class="dashboard-card">
           <template #header>
             <div class="card-header">
@@ -332,32 +326,50 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getProductList } from '@/api/product'
-import { getInventoryList } from '@/api/inventory'
+
 import { getProjectList } from '@/api/project'
 import { getRequirementList } from '@/api/requirement'
+import { getNoticeList } from '@/api/notice'
 import { getProcessedImageUrl } from '@/utils/imageProcessor'
-import { List, Warning, Document, Money, Clock, Picture } from '@element-plus/icons-vue'
+import { List, Warning, Document, Money, Clock, Picture, Bell } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 
+const unreadCount = ref(0)
+
 const stats = ref({
   pendingTasks: 5,
-  inventoryAlerts: 2,
+
   activeProjects: 8,
   monthlyPurchase: 12.5,
   personalTasks: 3
 })
 
+const goToNotificationCenter = () => {
+  router.push('/notification-center')
+}
+
+const loadNotifications = async () => {
+  try {
+    const response = await getNoticeList(userStore.user?.id || 0, 10)
+    if (response.code === 200) {
+      unreadCount.value = response.data?.filter(notice => notice.isRead === 0).length || 0
+    }
+  } catch (error) {
+    console.error('加载通知失败:', error)
+  }
+}
+
 const recentRequirements = ref([
   { code: 'REQ20231201', project: '2024春季新品研发', status: '待审核', date: '2023-12-01' },
   { code: 'REQ20231202', project: '经典款补货', status: '已通过', date: '2023-12-02' },
   { code: 'REQ20231203', project: '高端定制系列', status: '审核中', date: '2023-12-03' },
-  { code: 'REQ20231204', project: '童装系列', status: '草稿', date: '2023-12-04' }
+  { code: 'REQ20231204', project: '童装系列', status: '待审核', date: '2023-12-04' }
 ])
 
 const hotMaterials = ref([
@@ -383,10 +395,9 @@ const activeProjects = ref([
   { id: 3, projectName: '2024夏季连衣裙系列', clientName: 'ABC时尚', status: '进行中', progress: 30, endDate: '2024-06-15' }
 ])
 
-const inventoryAlerts = ref([
-  { id: 1, name: '纯棉面料 40S', quantity: 50, threshold: 100 },
-  { id: 2, name: 'YKK拉链 5号', quantity: 30, threshold: 50 }
-])
+const lowStockProducts = ref([])
+
+
 
 const getStatusType = (status) => {
   const map = {
@@ -394,7 +405,7 @@ const getStatusType = (status) => {
     '已通过': 'success',
     '审核中': 'primary',
     '已驳回': 'danger',
-    '草稿': 'info'
+    '待审核': 'info'
   }
   return map[status] || 'info'
 }
@@ -431,7 +442,7 @@ const goToProjectManagement = () => {
 }
 
 const goToInventoryManagement = () => {
-  router.push('/inventory-management')
+  router.push('/material-library')
 }
 
 const usageStats = ref({
@@ -445,10 +456,12 @@ onMounted(async () => {
   recentRequirements.value = []
   activeProjects.value = []
   
+  // 加载未读消息数量
+  await loadNotifications()
+  
   // 尝试获取真实数据
   try {
     const products = await getProductList()
-    const inventory = await getInventoryList()
     
     // 获取进行中项目 - 管理员查看所有，非管理员只查看自己相关的
     const projectsParams = {
@@ -479,8 +492,7 @@ onMounted(async () => {
       recentRequirements.value = requirements.data.records.map(req => ({
         code: req.requirementCode,
         project: req.projectName,
-        status: req.status === 'draft' ? '草稿' : 
-               req.status === 'pending' ? '待审核' : 
+        status: req.status === 'pending' ? '待审核' : 
                req.status === 'approved' ? '已通过' : 
                req.status === 'rejected' ? '已驳回' : 
                req.status === 'negotiating' ? '议价中' : 
@@ -492,20 +504,7 @@ onMounted(async () => {
     }
     
     // 简单的库存预警逻辑
-    let alerts = 0
-    let alertItems = []
-    if (inventory.data) {
-      const alertData = inventory.data.filter(i => i.quantity < 100) // 假设小于100预警
-      alerts = alertData.length
-      alertItems = alertData.map(i => ({
-        id: i.id,
-        name: i.productName || i.productCode || '未知辅料',
-        quantity: i.quantity,
-        threshold: 100
-      }))
-    }
-    stats.value.inventoryAlerts = alerts
-    inventoryAlerts.value = alertItems
+
     
     // 热门辅料可以用真实商品替换部分
     if (products.data && products.data.length > 0) {
@@ -514,8 +513,20 @@ onMounted(async () => {
         name: p.productName,
         price: p.price,
         image: p.image || p.imageUrl || p.images, // 使用真实的图片字段
-        stock: inventory.data?.find(i => i.productId === p.id)?.quantity || 0
+        stock: p.stock || 0
       }))
+      
+      // 计算库存预警数量
+      const lowStockItems = products.data.filter(p => {
+        const stock = p.stock || 0
+        const alertThreshold = p.alertThreshold || 10 // 默认为10
+        return stock <= alertThreshold
+      })
+      stats.value.pendingTasks = lowStockItems.length
+      lowStockProducts.value = lowStockItems
+    } else {
+      // 没有产品数据时，库存预警数量为0
+      stats.value.pendingTasks = 0
     }
     
     // 更新进行中项目数据

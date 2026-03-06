@@ -1,6 +1,61 @@
 <template>
   <div class="user-container">
-    <el-card>
+    <el-row :gutter="20">
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-item">
+            <div class="stat-icon" style="background: #409eff;">
+              <el-icon size="28"><User /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.totalUsers }}</div>
+              <div class="stat-label">用户总数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-item">
+            <div class="stat-icon" style="background: #67c23a;">
+              <el-icon size="28"><CircleCheck /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.enabledUsers }}</div>
+              <div class="stat-label">启用用户</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-item">
+            <div class="stat-icon" style="background: #e6a23c;">
+              <el-icon size="28"><Warning /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.pendingUsers }}</div>
+              <div class="stat-label">待审核用户</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-item">
+            <div class="stat-icon" style="background: #f56c6c;">
+              <el-icon size="28"><CloseBold /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.disabledUsers }}</div>
+              <div class="stat-label">禁用用户</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-card style="margin-top: 20px;">
       <template #header>
         <div class="card-header">
           <span>用户管理（支持审核）</span>
@@ -99,6 +154,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { User, CircleCheck, Warning, CloseBold } from '@element-plus/icons-vue'
 import { getUserList, saveUser, updateUser, deleteUser } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 
@@ -114,6 +170,13 @@ const filteredTableData = computed(() => {
   return tableData.value || []
 })
 const adminCount = computed(() => (tableData.value || []).filter(u => u.role === 'admin').length)
+
+const stats = ref({
+  totalUsers: 0,
+  enabledUsers: 0,
+  pendingUsers: 0,
+  disabledUsers: 0
+})
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增用户')
 const isEdit = ref(false)
@@ -140,6 +203,12 @@ const loadData = async () => {
   try {
     const res = await getUserList()
     tableData.value = res.data || []
+    // 计算统计数据
+    const list = tableData.value
+    stats.value.totalUsers = list.length
+    stats.value.enabledUsers = list.filter(u => u.status === 1).length
+    stats.value.pendingUsers = list.filter(u => u.status === 0).length
+    stats.value.disabledUsers = list.filter(u => u.status === 2).length
   } catch (error) {
     ElMessage.error('加载数据失败')
   }
@@ -252,5 +321,39 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.stat-card {
+  transition: all 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.stat-content .stat-value {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.stat-content .stat-label {
+  color: #909399;
+  font-size: 12px;
 }
 </style>

@@ -144,12 +144,24 @@ export const searchByImage = (file, limit = 10, threshold = 0.6) => {
 }
 
 // Get Materials (wrapping Product API)
-export const getMaterialList = (params) => {
+export const getMaterialList = async (params) => {
   // In a real app, this would call the backend with filters
   // For now we just get all products and filter in frontend or just return all
-  return request({
-    url: '/product/list',
-    method: 'get',
-    params
-  })
+  console.log('=== 调用getMaterialList ===')
+  console.log('参数:', params)
+  console.log('准备发送请求到 /api/product/list')
+  try {
+    const response = await request({
+      url: '/product/list',
+      method: 'get',
+      params
+    })
+    console.log('请求成功，响应:', response)
+    return response
+  } catch (error) {
+    console.error('请求失败:', error)
+    console.error('错误详情:', error.message)
+    console.error('错误堆栈:', error.stack)
+    throw error
+  }
 }

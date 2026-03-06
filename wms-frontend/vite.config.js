@@ -11,21 +11,24 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 8081,
+    port: 8082,
     proxy: {
       '/api': {
         target: 'http://localhost:9090',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        timeout: 60000
       },
       '/file': {
         target: 'http://localhost:9090',
-        changeOrigin: true
+        changeOrigin: true,
+        timeout: 60000
       },
       '/minio': {
         target: 'http://localhost:9000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/minio/, '')
+        rewrite: (path) => path.replace(/^\/minio/, ''),
+        timeout: 60000
       }
     }
   }

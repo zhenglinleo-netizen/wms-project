@@ -20,11 +20,11 @@ const routeTransitions = {
   Dashboard: 'bounce',
   Login: 'elastic',
   MaterialLibrary: 'slide-left',
-  InventoryManagement: 'slide-right',
+
   MaterialManagement: 'slide-up',
   ProjectScheme: 'scale',
   RequirementManagement: 'slide-up',
-  PurchaseManagement: 'slide-up',
+
   DataAnalysis: 'elastic',
   SystemManagement: 'fade',
   MaterialRecycle: 'slide-left',

@@ -81,20 +81,4 @@ export const createRequirementFromScheme = (schemeId) => {
   })
 }
 
-// 提交议价
-export const submitNegotiation = (data) => {
-  return request({
-    url: '/requirement/negotiate',
-    method: 'post',
-    data
-  })
-}
 
-// 审核议价
-export const auditNegotiation = (data) => {
-  return request({
-    url: '/requirement/negotiate/audit',
-    method: 'post',
-    data
-  })
-}

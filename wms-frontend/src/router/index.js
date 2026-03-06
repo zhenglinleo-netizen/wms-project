@@ -35,30 +35,15 @@ const routes = [
         component: () => import('@/views/RequirementManagement.vue'),
         meta: { title: '采购需求管理' }
       },
-      {
-        path: 'purchase-management',
-        name: 'PurchaseManagement',
-        component: () => import('@/views/PurchaseManagement.vue'),
-        meta: { title: '采购管理' }
-      },
-      {
-        path: 'inventory-management',
-        name: 'InventoryManagement',
-        component: () => import('@/views/Inventory.vue'),
-        meta: { title: '库存管理', requiresAdmin: true }
-      },
+
+
       {
         path: 'data-analysis',
         name: 'DataAnalysis',
         component: () => import('@/views/DataAnalysis.vue'),
         meta: { title: '数据分析与报表' }
       },
-      {
-        path: 'system-management',
-        name: 'SystemManagement',
-        component: () => import('@/views/SystemManagement.vue'),
-        meta: { title: '系统管理', requiresAdmin: true }
-      },
+
       {
         path: 'material-management',
         name: 'MaterialManagement',
@@ -113,6 +98,12 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  // 允许未登录用户访问智能辅料库页面
+  if (to.path === '/material-library') {
+    next()
+    return
+  }
+  
   // 动态导入useUserStore，避免在模块级别调用
   const { useUserStore } = await import('@/stores/user')
   const userStore = useUserStore()

@@ -12,31 +12,31 @@
       <!-- 左侧欢迎区域 -->
       <div class="welcome-section" :class="{ 'active': activeTab === 'login' }">
         <div class="welcome-content">
-          <h1 v-if="activeTab === 'login'">Hello, Welcome!</h1>
-          <h1 v-else>Create an Account</h1>
-          <p v-if="activeTab === 'login'">Don't have an account?</p>
-          <p v-else>Already have an account?</p>
+          <h1 v-if="activeTab === 'login'">你好，欢迎！</h1>
+          <h1 v-else>创建账户</h1>
+          <p v-if="activeTab === 'login'">还没有账户？</p>
+          <p v-else>已有账户？</p>
           <el-button 
             type="primary" 
             plain 
-            @click="activeTab = activeTab === 'login' ? 'register' : 'login'" 
+            @click="activeTab = activeTab === 'login' ? 'register' : 'login' " 
             class="tab-btn"
             :class="{ 'register-btn': activeTab === 'login', 'login-btn': activeTab === 'register' }"
           >
-            {{ activeTab === 'login' ? 'Register' : 'Login' }}
+            {{ activeTab === 'login' ? '注册' : '登录' }}
           </el-button>
           <div class="welcome-features">
             <div class="feature-item">
               <el-icon class="feature-icon"><Lock /></el-icon>
-              <span>Secure Access</span>
+              <span>安全访问</span>
             </div>
             <div class="feature-item">
               <el-icon class="feature-icon"><Clock /></el-icon>
-              <span>24/7 Support</span>
+              <span>24/7 支持</span>
             </div>
             <div class="feature-item">
               <el-icon class="feature-icon"><Lock /></el-icon>
-              <span>Data Protection</span>
+              <span>数据保护</span>
             </div>
           </div>
         </div>
@@ -47,13 +47,13 @@
         <div class="form-content">
           <!-- 登录表单 -->
           <div v-if="activeTab === 'login'" class="form-panel">
-            <h2 class="form-title">Login</h2>
+            <h2 class="form-title">登录</h2>
             <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="login-form">
               <!-- 账号输入 -->
               <el-form-item prop="account">
                 <el-input
                   v-model="loginForm.account"
-                  placeholder="Phone or Email"
+                  placeholder="手机号或邮箱"
                   :prefix-icon="User"
                   class="form-input"
                 />
@@ -66,7 +66,7 @@
                 <el-input
                   v-model="loginForm.password"
                   :type="loginPasswordVisible ? 'text' : 'password'"
-                  placeholder="Password"
+                  placeholder="密码"
                   :prefix-icon="Lock"
                   class="form-input"
                 >
@@ -82,22 +82,22 @@
               <!-- 忘记密码 -->
               <div class="form-options">
                 <el-link type="primary" :underline="false" @click="showForgotPassword" class="forgot-link">
-                  Forgot password?
+                  忘记密码？
                 </el-link>
               </div>
               
               <!-- 登录按钮 -->
               <el-form-item>
                 <el-button type="primary" @click="handleLogin" :loading="loading" class="submit-btn">
-                  <span v-if="!loading">Login</span>
-                  <span v-else>Logging in...</span>
+                  <span v-if="!loading">登录</span>
+                  <span v-else>登录中...</span>
                 </el-button>
               </el-form-item>
               
               <!-- 社交登录 -->
               <div class="social-login">
                 <div style="text-align: center; margin-bottom: 24px;">
-                  <p class="social-text">or login with social platforms</p>
+                  <p class="social-text">或通过社交平台登录</p>
                 </div>
                 <div class="social-buttons">
                   <el-button circle class="social-btn" :class="{ 'google-btn': true }">
@@ -121,11 +121,11 @@
           
           <!-- 注册表单 -->
           <div v-else class="form-panel">
-            <h2 class="form-title">Register</h2>
+            <h2 class="form-title">注册</h2>
             <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" class="register-form">
               <!-- 用户名输入 -->
               <el-form-item prop="username">
-                <el-input v-model="registerForm.username" placeholder="Username" :prefix-icon="User" class="form-input" />
+                <el-input v-model="registerForm.username" placeholder="用户名" :prefix-icon="User" class="form-input" />
               </el-form-item>
               
               <!-- 密码输入 -->
@@ -133,7 +133,7 @@
                 <el-input 
                   v-model="registerForm.password" 
                   :type="registerPasswordVisible ? 'text' : 'password'"
-                  placeholder="Password" 
+                  placeholder="密码" 
                   :prefix-icon="Lock" 
                   :suffix-icon="registerPasswordVisible ? View : Hide"
                   @click:suffix="registerPasswordVisible = !registerPasswordVisible"
@@ -143,38 +143,38 @@
               
               <!-- 真实姓名输入 -->
               <el-form-item prop="realName">
-                <el-input v-model="registerForm.realName" placeholder="Real Name" :prefix-icon="Postcard" class="form-input" />
+                <el-input v-model="registerForm.realName" placeholder="真实姓名" :prefix-icon="Postcard" class="form-input" />
               </el-form-item>
               
               <!-- 手机号输入 -->
               <el-form-item prop="phone">
-                <el-input v-model="registerForm.phone" placeholder="Phone" :prefix-icon="Iphone" class="form-input" />
+                <el-input v-model="registerForm.phone" placeholder="手机号" :prefix-icon="Iphone" class="form-input" />
               </el-form-item>
               
               <!-- 邮箱输入 -->
               <el-form-item prop="email">
-                <el-input v-model="registerForm.email" placeholder="Email" :prefix-icon="Message" class="form-input" />
+                <el-input v-model="registerForm.email" placeholder="邮箱" :prefix-icon="Message" class="form-input" />
               </el-form-item>
               
               <!-- 公司输入 -->
               <el-form-item prop="company">
-                <el-input v-model="registerForm.company" placeholder="Company" :prefix-icon="OfficeBuilding" class="form-input" />
+                <el-input v-model="registerForm.company" placeholder="公司" :prefix-icon="OfficeBuilding" class="form-input" />
               </el-form-item>
               
               <!-- 角色选择 -->
               <el-form-item prop="role">
-                <el-select v-model="registerForm.role" placeholder="Select Role" class="form-select">
-                  <el-option label="Admin" value="admin" />
-                  <el-option label="Designer" value="designer" />
-                  <el-option label="Buyer" value="buyer" />
+                <el-select v-model="registerForm.role" placeholder="选择角色" class="form-select">
+                  <el-option label="管理员" value="admin" />
+                  <el-option label="设计师" value="designer" />
+                  <el-option label="采购员" value="buyer" />
                 </el-select>
               </el-form-item>
               
               <!-- 注册按钮 -->
               <el-form-item>
                 <el-button type="primary" @click="handleRegister" :loading="loading" class="submit-btn">
-                  <span v-if="!loading">Register</span>
-                  <span v-else>Registering...</span>
+                  <span v-if="!loading">注册</span>
+                  <span v-else>注册中...</span>
                 </el-button>
               </el-form-item>
             </el-form>
@@ -186,7 +186,7 @@
     <!-- 找回密码弹窗 -->
     <el-dialog 
       v-model="forgotPasswordVisible" 
-      title="Forgot Password" 
+      title="忘记密码" 
       width="450px" 
       center
       class="forgot-password-dialog"
@@ -199,18 +199,18 @@
         label-width="100px"
         class="forgot-password-form"
       >
-        <el-form-item label="Username" prop="username">
+        <el-form-item label="用户名" prop="username">
           <el-input 
             v-model="forgotPasswordForm.username" 
-            placeholder="Please enter username" 
+            placeholder="请输入用户名" 
             class="form-input"
             :prefix-icon="User"
           />
         </el-form-item>
-        <el-form-item label="Email" prop="email">
+        <el-form-item label="邮箱" prop="email">
           <el-input 
             v-model="forgotPasswordForm.email" 
-            placeholder="Please enter email" 
+            placeholder="请输入邮箱" 
             class="form-input"
             :prefix-icon="Message"
           />
@@ -218,10 +218,10 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="forgotPasswordVisible = false" class="cancel-btn">Cancel</el-button>
+          <el-button @click="forgotPasswordVisible = false" class="cancel-btn">取消</el-button>
           <el-button type="primary" @click="handleForgotPassword" :loading="loading" class="submit-btn">
-            <span v-if="!loading">Submit</span>
-            <span v-else>Submitting...</span>
+            <span v-if="!loading">提交</span>
+            <span v-else>提交中...</span>
           </el-button>
         </span>
       </template>
