@@ -54,13 +54,5 @@ public interface RequirementService {
      */
     Result updateRequirement(Requirement requirement);
     
-    /**
-     * 提交议价
-     */
-    Result submitNegotiation(Long requirementId, List<RequirementItem> negotiatedItems, Double totalNegotiatedAmount);
-    
-    /**
-     * 审核议价
-     */
-    Result auditNegotiation(Long auditId, String status, String rejectionReason);
+
 }

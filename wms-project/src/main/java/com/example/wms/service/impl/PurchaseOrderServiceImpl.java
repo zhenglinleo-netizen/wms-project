@@ -121,7 +121,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             List<PurchaseOrderItem> orderItems = new ArrayList<>();
             
             for (RequirementItem item : requirementItems) {
-                System.out.println("=== 处理需求明细: 辅料ID=" + item.getMaterialId() + ", 辅料名称=" + item.getMaterialName() + ", 数量=" + item.getQuantity() + ", 单价=" + item.getPrice() + ", 议价单价=" + item.getNegotiatedPrice());
+                System.out.println("=== 处理需求明细: 辅料ID=" + item.getMaterialId() + ", 辅料名称=" + item.getMaterialName() + ", 数量=" + item.getQuantity() + ", 单价=" + item.getPrice() + ", 议价单价=" + item.getPrice());
                 
                 PurchaseOrderItem orderItem = new PurchaseOrderItem();
                 orderItem.setMaterialId(item.getMaterialId());
@@ -131,7 +131,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 orderItem.setQuantity(item.getQuantity() != null ? BigDecimal.valueOf(item.getQuantity()) : BigDecimal.ZERO);
                 orderItem.setUnit(item.getUnit());
                 
-                BigDecimal negotiatedPrice = item.getNegotiatedPrice() != null ? BigDecimal.valueOf(item.getNegotiatedPrice()) : null;
+                BigDecimal negotiatedPrice = item.getPrice() != null ? BigDecimal.valueOf(item.getPrice()) : null;
                 BigDecimal originalPrice = item.getPrice() != null ? BigDecimal.valueOf(item.getPrice()) : BigDecimal.ZERO;
                 BigDecimal unitPrice = negotiatedPrice != null && negotiatedPrice.compareTo(BigDecimal.ZERO) > 0 
                     ? negotiatedPrice : originalPrice;

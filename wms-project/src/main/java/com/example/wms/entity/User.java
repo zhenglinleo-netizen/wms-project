@@ -17,6 +17,7 @@ public class User {
     private String company;
     private String role;
     private Integer status;
+    private Integer isFirstLogin; // 1表示首次登录，0表示非首次登录
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

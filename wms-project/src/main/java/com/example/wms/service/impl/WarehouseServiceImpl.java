@@ -14,15 +14,21 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Autowired
     private WarehouseMapper warehouseMapper;
-    @Autowired
+    @Autowired(required = false)
     private CacheManager cacheManager;
 
     @Override
     public List<Warehouse> getAllWarehouses() {
-        String cacheKey = CacheKeyUtil.getWarehouseListKey();
-        List<Warehouse> warehouses = cacheManager.get(cacheKey, List.class);
-        if (warehouses == null) {
-            warehouses = warehouseMapper.selectAll();
+        if (cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getWarehouseListKey();
+            List<Warehouse> warehouses = cacheManager.get(cacheKey, List.class);
+            if (warehouses != null) {
+                return warehouses;
+            }
+        }
+        List<Warehouse> warehouses = warehouseMapper.selectAll();
+        if (cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getWarehouseListKey();
             cacheManager.set(cacheKey, warehouses, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
         }
         return warehouses;
@@ -30,13 +36,17 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Override
     public Warehouse getWarehouseById(Long id) {
-        String cacheKey = CacheKeyUtil.getWarehouseKey(id);
-        Warehouse warehouse = cacheManager.get(cacheKey, Warehouse.class);
-        if (warehouse == null) {
-            warehouse = warehouseMapper.selectById(id);
+        if (cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getWarehouseKey(id);
+            Warehouse warehouse = cacheManager.get(cacheKey, Warehouse.class);
             if (warehouse != null) {
-                cacheManager.set(cacheKey, warehouse, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
+                return warehouse;
             }
+        }
+        Warehouse warehouse = warehouseMapper.selectById(id);
+        if (warehouse != null && cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getWarehouseKey(id);
+            cacheManager.set(cacheKey, warehouse, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
         }
         return warehouse;
     }
@@ -52,8 +62,7 @@ public class WarehouseServiceImpl implements WarehouseService {
         
         int result = warehouseMapper.insert(warehouse);
         
-        // 清除缓存
-        if (result > 0) {
+        if (result > 0 && cacheManager != null) {
             cacheManager.deletePattern(CacheKeyUtil.getPattern("warehouse:"));
         }
         
@@ -64,8 +73,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     public int updateWarehouse(Warehouse warehouse) {
         int result = warehouseMapper.update(warehouse);
         
-        // 清除缓存
-        if (result > 0) {
+        if (result > 0 && cacheManager != null) {
             cacheManager.deletePattern(CacheKeyUtil.getPattern("warehouse:"));
         }
         
@@ -76,8 +84,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     public int deleteWarehouse(Long id) {
         int result = warehouseMapper.deleteById(id);
         
-        // 清除缓存
-        if (result > 0) {
+        if (result > 0 && cacheManager != null) {
             cacheManager.deletePattern(CacheKeyUtil.getPattern("warehouse:"));
         }
         

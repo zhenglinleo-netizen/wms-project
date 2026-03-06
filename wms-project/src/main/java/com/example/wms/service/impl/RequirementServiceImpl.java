@@ -2,19 +2,21 @@ package com.example.wms.service.impl;
 
 import com.example.wms.common.Result;
 import com.example.wms.dto.RequirementCreateDTO;
+import com.example.wms.entity.Project;
 import com.example.wms.entity.Requirement;
 import com.example.wms.entity.RequirementItem;
 import com.example.wms.entity.Scheme;
 import com.example.wms.entity.SchemeItem;
 import com.example.wms.entity.Product;
-import com.example.wms.entity.NegotiationAudit;
+
 import com.example.wms.entity.RequirementAudit;
+import com.example.wms.mapper.ProjectMapper;
 import com.example.wms.mapper.RequirementItemMapper;
 import com.example.wms.mapper.RequirementMapper;
 import com.example.wms.mapper.SchemeItemMapper;
 import com.example.wms.mapper.SchemeMapper;
 import com.example.wms.mapper.ProductMapper;
-import com.example.wms.mapper.NegotiationAuditMapper;
+
 import com.example.wms.mapper.RequirementAuditMapper;
 import com.example.wms.service.RequirementService;
 import com.example.wms.service.SchemeItemService;
@@ -39,6 +41,9 @@ public class RequirementServiceImpl implements RequirementService {
     private RequirementItemMapper requirementItemMapper;
 
     @Autowired
+    private ProjectMapper projectMapper;
+
+    @Autowired
     private SchemeMapper schemeMapper;
 
     @Autowired
@@ -47,8 +52,7 @@ public class RequirementServiceImpl implements RequirementService {
     @Autowired
     private ProductMapper productMapper;
 
-    @Autowired
-    private NegotiationAuditMapper negotiationAuditMapper;
+
 
     @Autowired
     private RequirementAuditMapper requirementAuditMapper;
@@ -99,7 +103,23 @@ public class RequirementServiceImpl implements RequirementService {
         List<RequirementItem> items = requirementItemMapper.selectByRequirementId(id);
         requirement.setItems(items);
         
-        // 构造返回结果，包含需求信息和议价审核信息
+        // 查询项目名称和方案名称
+        String projectName = null;
+        String schemeName = null;
+        if (requirement.getProjectId() != null) {
+            Project project = projectMapper.getProjectById(requirement.getProjectId(), null);
+            if (project != null) {
+                projectName = project.getProjectName();
+            }
+        }
+        if (requirement.getSchemeId() != null) {
+            Scheme scheme = schemeMapper.getSchemeById(requirement.getSchemeId());
+            if (scheme != null) {
+                schemeName = scheme.getSchemeName();
+            }
+        }
+        
+        // 构造返回结果
         java.util.Map<String, Object> resultMap = new java.util.HashMap<>();
         resultMap.put("id", requirement.getId());
         resultMap.put("requirementCode", requirement.getRequirementCode());
@@ -115,67 +135,9 @@ public class RequirementServiceImpl implements RequirementService {
         resultMap.put("deadline", requirement.getDeadline());
         resultMap.put("totalPayment", requirement.getTotalPayment());
         resultMap.put("priority", requirement.getPriority());
+        resultMap.put("projectName", projectName);
+        resultMap.put("schemeName", schemeName);
         resultMap.put("items", items);
-        
-        // 查询议价审核记录
-        NegotiationAudit negotiationAudit = negotiationAuditMapper.selectByRequirementId(id);
-        if (negotiationAudit != null) {
-            resultMap.put("negotiationAuditId", negotiationAudit.getId());
-            resultMap.put("submittedBy", negotiationAudit.getSubmittedBy());
-            resultMap.put("submittedAt", negotiationAudit.getSubmittedAt());
-            resultMap.put("negotiatedTotal", negotiationAudit.getNegotiatedTotal());
-            
-            // 解析议价数据JSON，转换为列表
-            try {
-                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                java.util.List<java.util.Map<String, Object>> negotiatedItems = objectMapper.readValue(
-                    negotiationAudit.getNegotiationData(), 
-                    new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
-                );
-                
-                // 补充完整的辅料信息
-                if (!negotiatedItems.isEmpty() && !items.isEmpty()) {
-                    // 创建需求明细的映射，方便查找
-                    java.util.Map<Long, RequirementItem> itemMap = new java.util.HashMap<>();
-                    for (RequirementItem item : items) {
-                        itemMap.put(item.getMaterialId(), item);
-                    }
-                    
-                    // 为每个议价明细补充完整信息
-                    for (java.util.Map<String, Object> negotiatedItem : negotiatedItems) {
-                        Long materialId = ((Number) negotiatedItem.get("materialId")).longValue();
-                        RequirementItem originalItem = itemMap.get(materialId);
-                        if (originalItem != null) {
-                            // 补充辅料编码、规格、用途、预计货期、单位等信息
-                            negotiatedItem.put("materialCode", originalItem.getMaterialCode());
-                            negotiatedItem.put("specification", originalItem.getSpecification());
-                            negotiatedItem.put("purpose", originalItem.getPurpose());
-                            negotiatedItem.put("expectedDeliveryDays", originalItem.getExpectedDeliveryDays());
-                            negotiatedItem.put("unit", originalItem.getUnit());
-                            
-                            // 从originalItem获取原单价
-                            Double originalPrice = originalItem.getPrice() != null ? originalItem.getPrice() : 0.0;
-                            negotiatedItem.put("originalPrice", originalPrice);
-                            
-                            // 获取议价单价
-                            Double negotiatedPrice = (Double) negotiatedItem.get("negotiatedPrice");
-                            if (negotiatedPrice == null) {
-                                negotiatedPrice = 0.0;
-                            }
-                            
-                            // 计算差价
-                            double difference = negotiatedPrice - originalPrice;
-                            negotiatedItem.put("difference", difference);
-                        }
-                    }
-                }
-                
-                resultMap.put("negotiatedItems", negotiatedItems);
-            } catch (Exception e) {
-                e.printStackTrace();
-                resultMap.put("negotiatedItems", new java.util.ArrayList<>());
-            }
-        }
         
         return Result.success(resultMap);
     }
@@ -258,7 +220,7 @@ public class RequirementServiceImpl implements RequirementService {
         String purpose = "采购方案：" + scheme.getSchemeName();
         requirement.setPurpose(purpose);
         requirement.setPriority("normal");
-        requirement.setStatus("draft");
+        requirement.setStatus("pending");
         requirement.setCreatorId(getCurrentUserId()); // 使用当前登录用户ID
         requirement.setCreateTime(new Date());
         requirement.setRemark("从方案自动生成");
@@ -342,7 +304,7 @@ public class RequirementServiceImpl implements RequirementService {
             // 计算需求总额
             double totalAmount = 0;
             for (RequirementItem item : requirementItems) {
-                totalAmount += item.getQuantity() * (item.getNegotiatedPrice() > 0 ? item.getNegotiatedPrice() : item.getPrice());
+                totalAmount += item.getQuantity() * (item.getPrice() > 0 ? item.getPrice() : item.getPrice());
             }
             
             // 更新需求状态为待审核
@@ -451,7 +413,7 @@ public class RequirementServiceImpl implements RequirementService {
             // 计算需求总额
             double totalAmount = 0;
             for (RequirementItem item : requirementItems) {
-                totalAmount += item.getQuantity() * (item.getNegotiatedPrice() > 0 ? item.getNegotiatedPrice() : item.getPrice());
+                totalAmount += item.getQuantity() * (item.getPrice() > 0 ? item.getPrice() : item.getPrice());
             }
             
             // 更新需求，保存deadline、expectedDeliveryDate和expectedDeliveryDays
@@ -492,116 +454,5 @@ public class RequirementServiceImpl implements RequirementService {
     // 创建ObjectMapper实例
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-    @Override
-    @Transactional
-    public Result submitNegotiation(Long requirementId, List<RequirementItem> negotiatedItems, Double totalNegotiatedAmount) {
-        try {
-            // 更新需求状态为"议价待审核"
-            Requirement requirement = new Requirement();
-            requirement.setId(requirementId);
-            requirement.setStatus("negotiating_pending");
-            requirementMapper.updateById(requirement);
-            
-            // 保存议价数据到审核表
-            NegotiationAudit audit = new NegotiationAudit();
-            audit.setRequirementId(requirementId);
-            // 使用Jackson将list转换为JSON字符串
-            audit.setNegotiationData(objectMapper.writeValueAsString(negotiatedItems));
-            audit.setNegotiatedTotal(totalNegotiatedAmount);
-            audit.setSubmittedBy(getCurrentUserId());
-            audit.setSubmittedAt(new Date());
-            audit.setStatus("pending");
-            negotiationAuditMapper.insert(audit);
-            
-            // 发送通知给所有管理员
-            Requirement requirementDetail = requirementMapper.selectById(requirementId);
-            String title = "议价审核通知";
-            String content = "用户提交了议价审核，需求单号：" + requirementDetail.getRequirementCode() + "，请及时审核。";
-            noticeService.sendNoticeToAdmins(title, content, "negotiation_audit", requirementId);
-            
-            // 暂时不更新需求明细和总价，等待审核通过后再更新
-            
-            return Result.success(null);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("议价提交失败: " + e.getMessage());
-        }
-    }
 
-    @Override
-    @Transactional
-    public Result auditNegotiation(Long auditId, String status, String rejectionReason) {
-        try {
-            System.out.println("=== 开始议价审核，审核记录ID: " + auditId + ", 审核结果: " + status);
-            
-            // 获取议价审核记录
-            NegotiationAudit audit = negotiationAuditMapper.selectById(auditId);
-            if (audit == null) {
-                System.out.println("=== 议价审核记录不存在，审核记录ID: " + auditId);
-                return Result.error("议价审核记录不存在");
-            }
-            
-            System.out.println("=== 议价审核记录信息: ID=" + audit.getId() + ", 需求单ID=" + audit.getRequirementId() + ", 议价总额=" + audit.getNegotiatedTotal());
-            
-            // 更新审核记录
-            audit.setStatus(status);
-            audit.setAuditedBy(getCurrentUserId());
-            audit.setAuditedAt(new Date());
-            audit.setRejectionReason(rejectionReason);
-            negotiationAuditMapper.updateById(audit);
-            System.out.println("=== 议价审核记录更新成功");
-            
-            // 更新需求状态
-            Requirement requirement = new Requirement();
-            requirement.setId(audit.getRequirementId());
-            
-            if ("approved".equals(status)) {
-                // 审核通过
-                requirement.setStatus("approved");
-                requirement.setTotalPayment(audit.getNegotiatedTotal());
-                requirementMapper.updateById(requirement);
-                System.out.println("=== 需求单状态更新成功，需求单ID: " + audit.getRequirementId() + ", 新状态: approved");
-                
-                // 更新需求明细的议价价格
-                System.out.println("=== 开始更新需求明细的议价价格");
-                // 使用Jackson将JSON字符串转换为List
-                List<RequirementItem> negotiatedItems = objectMapper.readValue(
-                    audit.getNegotiationData(), 
-                    new com.fasterxml.jackson.core.type.TypeReference<List<RequirementItem>>() {}
-                );
-                System.out.println("=== 议价明细数量: " + negotiatedItems.size());
-                
-                for (RequirementItem item : negotiatedItems) {
-                    requirementItemMapper.updatePriceByRequirementIdAndMaterialId(
-                        audit.getRequirementId(),
-                        item.getMaterialId(),
-                        item.getNegotiatedPrice()
-                    );
-                }
-                System.out.println("=== 需求明细议价价格更新成功");
-                
-                // 自动创建采购订单
-                System.out.println("=== 开始创建采购订单，检查purchaseOrderService是否为空: " + (purchaseOrderService != null ? "否" : "是"));
-                if (purchaseOrderService != null) {
-                    System.out.println("=== 调用purchaseOrderService.createPurchaseOrderFromRequirement，需求单ID: " + audit.getRequirementId());
-                    Result<Void> result = purchaseOrderService.createPurchaseOrderFromRequirement(audit.getRequirementId());
-                    System.out.println("=== 创建采购订单结果: " + (result.getCode() == 200 ? "成功" : "失败") + ", 消息: " + result.getMessage());
-                } else {
-                    System.out.println("=== purchaseOrderService为空，无法创建采购订单");
-                }
-            } else if ("rejected".equals(status)) {
-                // 审核未通过
-                requirement.setStatus("rejected");
-                requirementMapper.updateById(requirement);
-                System.out.println("=== 需求单状态更新成功，需求单ID: " + audit.getRequirementId() + ", 新状态: rejected");
-            }
-            
-            System.out.println("=== 议价审核完成，审核记录ID: " + auditId);
-            return Result.success(null);
-        } catch (Exception e) {
-            System.out.println("=== 议价审核失败，审核记录ID: " + auditId);
-            e.printStackTrace();
-            return Result.error("议价审核失败: " + e.getMessage());
-        }
-    }
 }

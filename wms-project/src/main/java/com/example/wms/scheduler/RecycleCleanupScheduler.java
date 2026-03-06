@@ -28,13 +28,13 @@ public class RecycleCleanupScheduler {
     @Autowired
     private ProductMapper productMapper;
 
-    @Autowired
+    @Autowired(required = false)
     private MinioService minioService;
 
-    @Autowired
+    @Autowired(required = false)
     private MilvusService milvusService;
 
-    @Autowired
+    @Autowired(required = false)
     private CacheManager cacheManager;
 
     // 自动清理天数：30天
@@ -71,7 +71,7 @@ public class RecycleCleanupScheduler {
             }
 
             // 清除缓存
-            if (cleanupCount > 0) {
+            if (cleanupCount > 0 && cacheManager != null) {
                 cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
                 logger.info("已清除产品相关缓存");
             }
@@ -101,19 +101,19 @@ public class RecycleCleanupScheduler {
      * @param product 辅料信息
      */
     private void cleanupProduct(Product product) {
-        // 删除相关图片
-        deleteProductImages(product);
-
-        // 删除Milvus中的向量数据
-        try {
-            milvusService.deleteById("materials", product.getId());
-            logger.info("删除Milvus向量数据成功: ID={}", product.getId());
-        } catch (Exception e) {
-            logger.warn("删除Milvus向量数据失败: {}", e.getMessage());
-            // Milvus删除失败不影响产品删除
+        if (minioService != null) {
+            deleteProductImages(product);
         }
 
-        // 从数据库中删除
+        if (milvusService != null) {
+            try {
+                milvusService.deleteById("materials", product.getId());
+                logger.info("删除Milvus向量数据成功: ID={}", product.getId());
+            } catch (Exception e) {
+                logger.warn("删除Milvus向量数据失败: {}", e.getMessage());
+            }
+        }
+
         int result = productMapper.deleteById(product.getId());
         if (result > 0) {
                 logger.info("成功清理辅料: ID={}, 名称={}", product.getId(), product.getProductName());
@@ -122,15 +122,9 @@ public class RecycleCleanupScheduler {
             }
     }
 
-    /**
-     * 删除辅料相关图片
-     * @param product 辅料信息
-     */
     private void deleteProductImages(Product product) {
-        // 删除主图
         if (product.getImageUrl() != null && !product.getImageUrl().isEmpty()) {
             try {
-                // 提取文件名
                 String imageUrl = product.getImageUrl();
                 String filename = imageUrl;
                 if (imageUrl.contains("/")) {
@@ -140,17 +134,13 @@ public class RecycleCleanupScheduler {
                 logger.debug("删除主图成功: {}", filename);
             } catch (Exception e) {
                 logger.warn("删除主图失败: {}", e.getMessage());
-                // 图片删除失败不影响产品删除
             }
         }
 
-        // 删除多图
         if (product.getImages() != null && !product.getImages().isEmpty()) {
             try {
-                // 假设images是JSON数组格式
                 String imagesJson = product.getImages();
                 if (imagesJson.startsWith("[")) {
-                    // 简单处理，提取所有文件名
                     String[] imageUrls = imagesJson.substring(1, imagesJson.length() - 1).split(",");
                     for (String imageUrlStr : imageUrls) {
                         String imageUrl = imageUrlStr.trim().replace("\"", "");
@@ -164,14 +154,12 @@ public class RecycleCleanupScheduler {
                                 logger.debug("删除多图成功: {}", filename);
                             } catch (Exception e) {
                                 logger.warn("删除多图失败: {}", e.getMessage());
-                                // 图片删除失败不影响其他操作
                             }
                         }
                     }
                 }
             } catch (Exception e) {
                 logger.warn("处理多图删除失败: {}", e.getMessage());
-                // 图片删除失败不影响产品删除
             }
         }
     }

@@ -13,6 +13,7 @@ import com.example.wms.utils.CacheKeyUtil;
 import com.example.wms.utils.CacheManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -27,19 +28,29 @@ public class ProductServiceImpl implements ProductService {
     private MaterialCategoryMapper categoryMapper;
     @Autowired
     private MaterialTypeMapper materialTypeMapper;
-    @Autowired
+    @Autowired(required = false)
     private CacheManager cacheManager;
-    @Autowired
+    @Autowired(required = false)
     private MinioService minioService;
-    @Autowired
+    @Autowired(required = false)
     private MilvusService milvusService;
 
     @Override
     public List<Product> getAllProducts() {
-        String cacheKey = CacheKeyUtil.getProductListKey();
-        List<Product> products = cacheManager.get(cacheKey, List.class);
+        if (cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getProductListKey();
+            List<Product> products = cacheManager.get(cacheKey, List.class);
+            if (products != null) {
+                return products;
+            }
+        }
+        List<Product> products = productMapper.selectAll();
+        // 确保返回非 null 列表
         if (products == null) {
-            products = productMapper.selectAll();
+            products = new ArrayList<>();
+        }
+        if (cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getProductListKey();
             cacheManager.set(cacheKey, products, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
         }
         return products;
@@ -52,26 +63,34 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product getProductById(Long id) {
-        String cacheKey = CacheKeyUtil.getProductKey(id);
-        Product product = cacheManager.get(cacheKey, Product.class);
-        if (product == null) {
-            product = productMapper.selectById(id);
+        if (cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getProductKey(id);
+            Product product = cacheManager.get(cacheKey, Product.class);
             if (product != null) {
-                cacheManager.set(cacheKey, product, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
+                return product;
             }
+        }
+        Product product = productMapper.selectById(id);
+        if (product != null && cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getProductKey(id);
+            cacheManager.set(cacheKey, product, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
         }
         return product;
     }
 
     @Override
     public Product getProductByFileHash(String fileHash) {
-        String cacheKey = CacheKeyUtil.getProductByFileHashKey(fileHash);
-        Product product = cacheManager.get(cacheKey, Product.class);
-        if (product == null) {
-            product = productMapper.selectByFileHash(fileHash);
+        if (cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getProductByFileHashKey(fileHash);
+            Product product = cacheManager.get(cacheKey, Product.class);
             if (product != null) {
-                cacheManager.set(cacheKey, product, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
+                return product;
             }
+        }
+        Product product = productMapper.selectByFileHash(fileHash);
+        if (product != null && cacheManager != null) {
+            String cacheKey = CacheKeyUtil.getProductByFileHashKey(fileHash);
+            cacheManager.set(cacheKey, product, CacheKeyUtil.DEFAULT_EXPIRE_TIME);
         }
         return product;
     }
@@ -82,7 +101,6 @@ public class ProductServiceImpl implements ProductService {
             throw new RuntimeException("商品编码已存在");
         }
         
-        // 检查文件哈希值是否已存在
         if (product.getFileHash() != null && !product.getFileHash().isEmpty()) {
             Product existingProduct = productMapper.selectByFileHash(product.getFileHash());
             if (existingProduct != null) {
@@ -113,7 +131,6 @@ public class ProductServiceImpl implements ProductService {
             }
         }
         
-        // 处理材质类型映射
         if (product.getMaterial() != null && !product.getMaterial().isEmpty()) {
             MaterialType materialType = materialTypeMapper.selectByName(product.getMaterial());
             if (materialType == null) {
@@ -126,8 +143,7 @@ public class ProductServiceImpl implements ProductService {
         
         int result = productMapper.insert(product);
         
-        // 清除缓存
-        if (result > 0) {
+        if (result > 0 && cacheManager != null) {
             cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
         }
         
@@ -142,8 +158,12 @@ public class ProductServiceImpl implements ProductService {
         
         int result = productMapper.update(product);
         
-        // 清除缓存
-        if (result > 0) {
+        // 更新库存信息
+        if (product.getStock() != null) {
+            productMapper.updateInventory(product);
+        }
+        
+        if (result > 0 && cacheManager != null) {
             cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
         }
         
@@ -152,18 +172,17 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public int deleteProduct(Long id) {
-        // 先获取产品信息
         Product product = productMapper.selectById(id);
         
-        // 软删除：更新状态为删除状态
         Product updateProduct = new Product();
         updateProduct.setId(id);
-        updateProduct.setStatus(-1); // -1表示已删除
+        updateProduct.setStatus(-1);
         int result = productMapper.update(updateProduct);
         
-        // 清除缓存
         if (result > 0) {
-            cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+            if (cacheManager != null) {
+                cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+            }
             logger.info("软删除辅料成功: ID=" + id);
         }
         
@@ -177,15 +196,15 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public int restoreProduct(Long id) {
-        // 恢复辅料：更新状态为默认状态
         Product updateProduct = new Product();
         updateProduct.setId(id);
-        updateProduct.setStatus(2); // 2表示待审核状态
+        updateProduct.setStatus(2);
         int result = productMapper.update(updateProduct);
         
-        // 清除缓存
         if (result > 0) {
-            cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+            if (cacheManager != null) {
+                cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+            }
             logger.info("恢复辅料成功: ID=" + id);
         }
         
@@ -194,22 +213,18 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public int permanentlyDeleteProduct(Long id) {
-        // 先获取产品信息，用于后续删除图片
         Product product = productMapper.selectById(id);
         
-        // 永久删除：从数据库中删除
         int result = productMapper.deleteById(id);
         
-        // 清除缓存
         if (result > 0) {
-            cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+            if (cacheManager != null) {
+                cacheManager.deletePattern(CacheKeyUtil.getPattern("product:"));
+            }
             
-            // 删除相关图片
-            if (product != null) {
-                // 删除主图
+            if (product != null && minioService != null) {
                 if (product.getImageUrl() != null && !product.getImageUrl().isEmpty()) {
                     try {
-                        // 提取文件名
                         String imageUrl = product.getImageUrl();
                         String filename = imageUrl;
                         if (imageUrl.contains("/")) {
@@ -219,17 +234,13 @@ public class ProductServiceImpl implements ProductService {
                         logger.info("删除主图成功: " + filename);
                     } catch (Exception e) {
                         logger.warning("删除主图失败: " + e.getMessage());
-                        // 图片删除失败不影响产品删除
                     }
                 }
                 
-                // 删除多图
                 if (product.getImages() != null && !product.getImages().isEmpty()) {
                     try {
-                        // 假设images是JSON数组格式
                         String imagesJson = product.getImages();
                         if (imagesJson.startsWith("[")) {
-                            // 简单处理，提取所有文件名
                             String[] imageUrls = imagesJson.substring(1, imagesJson.length() - 1).split(",");
                             for (String imageUrlStr : imageUrls) {
                                 String imageUrl = imageUrlStr.trim().replace("\"", "");
@@ -243,24 +254,22 @@ public class ProductServiceImpl implements ProductService {
                                         logger.info("删除多图成功: " + filename);
                                     } catch (Exception e) {
                                         logger.warning("删除多图失败: " + e.getMessage());
-                                        // 图片删除失败不影响其他操作
                                     }
                                 }
                             }
                         }
                     } catch (Exception e) {
                         logger.warning("处理多图删除失败: " + e.getMessage());
-                        // 图片删除失败不影响产品删除
                     }
                 }
                 
-                // 删除Milvus中的向量数据
-                try {
-                    milvusService.deleteById("materials", id);
-                    logger.info("删除Milvus向量数据成功: ID=" + id);
-                } catch (Exception e) {
-                    logger.warning("删除Milvus向量数据失败: " + e.getMessage());
-                    // Milvus删除失败不影响产品删除
+                if (milvusService != null) {
+                    try {
+                        milvusService.deleteById("materials", id);
+                        logger.info("删除Milvus向量数据成功: ID=" + id);
+                    } catch (Exception e) {
+                        logger.warning("删除Milvus向量数据失败: " + e.getMessage());
+                    }
                 }
             }
             logger.info("永久删除辅料成功: ID=" + id);

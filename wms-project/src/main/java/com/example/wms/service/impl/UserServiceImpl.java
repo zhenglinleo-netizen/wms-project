@@ -4,8 +4,10 @@ import com.example.wms.dto.RegisterDTO;
 import com.example.wms.entity.User;
 import com.example.wms.mapper.UserMapper;
 import com.example.wms.service.UserService;
+import com.example.wms.service.NoticeService;
 import com.example.wms.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,6 +26,10 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    @Lazy
+    private NoticeService noticeService;
 
     @Override
     public User login(String account, String password, HttpServletRequest request) {
@@ -59,9 +65,45 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void register(RegisterDTO registerDTO) {
+        // 空格字符审查
+        if (registerDTO.getUsername() != null) {
+            registerDTO.setUsername(registerDTO.getUsername().trim());
+            if (registerDTO.getUsername().isEmpty()) {
+                throw new RuntimeException("用户名不能为空");
+            }
+        }
+        
+        if (registerDTO.getRealName() != null) {
+            registerDTO.setRealName(registerDTO.getRealName().trim());
+            if (registerDTO.getRealName().isEmpty()) {
+                throw new RuntimeException("真实姓名不能为空");
+            }
+        }
+        
+        if (registerDTO.getCompany() != null) {
+            registerDTO.setCompany(registerDTO.getCompany().trim());
+            if (registerDTO.getCompany().isEmpty()) {
+                throw new RuntimeException("公司不能为空");
+            }
+        }
+        
+        if (registerDTO.getRole() != null) {
+            registerDTO.setRole(registerDTO.getRole().trim());
+            if (registerDTO.getRole().isEmpty()) {
+                throw new RuntimeException("角色不能为空");
+            }
+        }
+        
         // 检查用户名是否已存在
         if (userMapper.selectByUsername(registerDTO.getUsername()) != null) {
             throw new RuntimeException("用户名已存在");
+        }
+        
+        // 检查手机号是否已存在
+        if (registerDTO.getPhone() != null && !registerDTO.getPhone().isEmpty()) {
+            if (userMapper.selectByPhone(registerDTO.getPhone()) != null) {
+                throw new RuntimeException("手机号已被注册");
+            }
         }
         
         // 创建用户对象
@@ -76,6 +118,12 @@ public class UserServiceImpl implements UserService {
         user.setStatus(0); // 待审核状态
         
         userMapper.insert(user);
+        
+        // 向管理员发送通知
+        String title = "新用户注册通知";
+        String content = "新用户 " + registerDTO.getUsername() + " (" + registerDTO.getRealName() + ") 已注册，公司：" + registerDTO.getCompany() + "，请及时审核。";
+        String type = "system";
+        noticeService.sendNoticeToAdmins(title, content, type, user.getId());
     }
 
     @Override

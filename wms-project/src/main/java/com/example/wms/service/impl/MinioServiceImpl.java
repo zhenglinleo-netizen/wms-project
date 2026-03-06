@@ -10,6 +10,7 @@ import io.minio.RemoveObjectArgs;
 import io.minio.errors.MinioException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,9 +21,10 @@ import java.security.MessageDigest;
 import java.util.UUID;
 
 @Service
+@ConditionalOnProperty(name = "minio.enabled", havingValue = "true", matchIfMissing = false)
 public class MinioServiceImpl implements MinioService {
 
-    @Autowired
+    @Autowired(required = false)
     private MinioClient minioClient;
 
     @Value("${minio.bucketName}")

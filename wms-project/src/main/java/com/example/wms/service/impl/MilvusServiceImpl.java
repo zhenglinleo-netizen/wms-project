@@ -107,12 +107,20 @@ public class MilvusServiceImpl implements MilvusService {
             log.warn("Milvus client not initialized, cannot insert vectors");
             return;
         }
+        
+        // 验证向量维度
+        int expectedDimension = 2048;
+        for (List<Float> vec : vectors) {
+            if (vec.size() != expectedDimension) {
+                throw new RuntimeException("Vector dimension mismatch: expected " + expectedDimension + ", got " + vec.size());
+            }
+        }
+        
         // 自动创建collection（如果不存在）
         if (!collectionExists(collectionName)) {
             log.info("Collection {} does not exist, creating it...", collectionName);
-            // 获取向量维度
-            int dimension = vectors.isEmpty() ? 2048 : vectors.get(0).size();
-            createCollection(collectionName, dimension, MetricType.IP);
+            // 固定使用2048维度
+            createCollection(collectionName, expectedDimension, MetricType.IP);
         }
 
         List<InsertParam.Field> fields = new ArrayList<>();
@@ -311,11 +319,23 @@ public class MilvusServiceImpl implements MilvusService {
         Map<Long, Float> materialScores = new HashMap<>();
 
         if (milvusClient == null) {
-            log.warn("Milvus client not initialized, returning empty results");
+            log.error("Milvus client not initialized, cannot perform search");
             return materialScores;
         }
 
         try {
+            // 验证向量
+            if (vector == null || vector.isEmpty()) {
+                log.error("Vector cannot be empty");
+                return materialScores;
+            }
+            
+            // 验证向量维度
+            if (vector.size() != 2048) {
+                log.error("Vector dimension must be 2048, got {}", vector.size());
+                return materialScores;
+            }
+
             // 检查collection是否存在
             if (!collectionExists(collectionName)) {
                 log.warn("Collection {} does not exist, returning empty results", collectionName);

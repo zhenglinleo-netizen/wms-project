@@ -18,7 +18,7 @@ public class NoticeServiceImpl implements NoticeService {
     @Autowired
     private NoticeMapper noticeMapper;
     
-    @Autowired
+    @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
     
     @Autowired
@@ -53,15 +53,21 @@ public class NoticeServiceImpl implements NoticeService {
     
     @Override
     public int getUnreadCount(Long userId) {
-        String cacheKey = UNREAD_COUNT_KEY_PREFIX + userId;
-        
-        String cachedCount = redisTemplate.opsForValue().get(cacheKey);
-        if (cachedCount != null) {
-            return Integer.parseInt(cachedCount);
+        if (redisTemplate != null) {
+            String cacheKey = UNREAD_COUNT_KEY_PREFIX + userId;
+            
+            String cachedCount = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedCount != null) {
+                return Integer.parseInt(cachedCount);
+            }
         }
         
         int count = noticeMapper.countUnreadByUserId(userId);
-        redisTemplate.opsForValue().set(cacheKey, String.valueOf(count), CACHE_EXPIRE_TIME, TimeUnit.MINUTES);
+        
+        if (redisTemplate != null) {
+            String cacheKey = UNREAD_COUNT_KEY_PREFIX + userId;
+            redisTemplate.opsForValue().set(cacheKey, String.valueOf(count), CACHE_EXPIRE_TIME, TimeUnit.MINUTES);
+        }
         
         return count;
     }
@@ -70,7 +76,7 @@ public class NoticeServiceImpl implements NoticeService {
     public int markAsRead(Long userId, Long noticeId) {
         int result = noticeMapper.markAsRead(userId, noticeId);
         
-        if (result > 0) {
+        if (result > 0 && redisTemplate != null) {
             String cacheKey = UNREAD_COUNT_KEY_PREFIX + userId;
             redisTemplate.opsForValue().decrement(cacheKey);
         }
@@ -82,7 +88,7 @@ public class NoticeServiceImpl implements NoticeService {
     public int markAllAsRead(Long userId) {
         int result = noticeMapper.markAllAsRead(userId);
         
-        if (result > 0) {
+        if (result > 0 && redisTemplate != null) {
             String cacheKey = UNREAD_COUNT_KEY_PREFIX + userId;
             redisTemplate.opsForValue().set(cacheKey, "0", CACHE_EXPIRE_TIME, TimeUnit.MINUTES);
         }
@@ -102,10 +108,8 @@ public class NoticeServiceImpl implements NoticeService {
 
     @Override
     public void sendNoticeToAdmins(String title, String content, String type, Long relatedId) {
-        // 获取所有管理员
         List<User> admins = userService.getAdmins();
         
-        // 为每个管理员创建通知
         for (User admin : admins) {
             Notice notice = new Notice();
             notice.setTitle(title);
@@ -113,9 +117,8 @@ public class NoticeServiceImpl implements NoticeService {
             notice.setType(type);
             notice.setUserId(admin.getId());
             notice.setRelatedId(relatedId);
-            notice.setIsRead(0); // 0表示未读
+            notice.setIsRead(0);
             
-            // 发送到消息队列
             sendNoticeToQueue(notice);
         }
     }

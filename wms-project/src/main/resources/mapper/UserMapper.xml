@@ -12,6 +12,7 @@
         <result column="company" property="company"/>
         <result column="role" property="role"/>
         <result column="status" property="status"/>
+        <result column="is_first_login" property="isFirstLogin"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
@@ -37,8 +38,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO sys_user (username, password, real_name, phone, email, company, role, status)
-        VALUES (#{username}, #{password}, #{realName}, #{phone}, #{email}, #{company}, #{role}, #{status})
+        INSERT INTO sys_user (username, password, real_name, phone, email, company, role, status, is_first_login)
+        VALUES (#{username}, #{password}, #{realName}, #{phone}, #{email}, #{company}, #{role}, #{status}, 1)
     </insert>
 
     <update id="update">
@@ -51,6 +52,7 @@
             <if test="company != null">company = #{company},</if>
             <if test="role != null">role = #{role},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="isFirstLogin != null">is_first_login = #{isFirstLogin},</if>
         </set>
         WHERE id = #{id}
     </update>

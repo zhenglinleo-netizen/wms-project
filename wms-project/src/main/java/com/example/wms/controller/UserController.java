@@ -6,7 +6,9 @@ import com.example.wms.common.Result;
 import com.example.wms.dto.ChangePasswordDTO;
 import com.example.wms.dto.LoginDTO;
 import com.example.wms.dto.RegisterDTO;
+import com.example.wms.entity.Notice;
 import com.example.wms.entity.User;
+import com.example.wms.service.NoticeService;
 import com.example.wms.service.UserService;
 import com.example.wms.util.JwtUtil;
 import javax.servlet.http.HttpServletRequest;
@@ -15,6 +17,7 @@ import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +27,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private NoticeService noticeService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -49,6 +55,39 @@ public class UserController {
                 System.out.println("账户未审核或已被禁用: " + user.getStatus());
                 return Result.error("账户未审核或已被禁用，请联系管理员");
             }
+            
+            // 检查是否首次登录
+            if (user.getIsFirstLogin() != null && user.getIsFirstLogin() == 1) {
+                System.out.println("首次登录，发送欢迎消息");
+                // 构建欢迎消息
+                String title = "欢迎使用WMS系统";
+                String content = "亲爱的" + user.getRealName() + "，欢迎您首次登录WMS系统！\n\n" +
+                        "系统使用指南：\n" +
+                        "1. 左侧菜单栏包含系统所有功能模块\n" +
+                        "2. 辅料管理模块用于管理辅料信息\n" +
+                        "3. 项目方案模块用于创建和管理项目\n" +
+                        "4. 消息中心用于查看系统通知\n\n" +
+                        "如有任何问题，请联系系统管理员。";
+                String type = "system";
+                
+                // 发送欢迎消息
+                Notice notice = new Notice();
+                notice.setTitle(title);
+                notice.setContent(content);
+                notice.setType(type);
+                notice.setUserId(user.getId());
+                notice.setRelatedId(user.getId());
+                notice.setIsRead(0);
+                notice.setCreateTime(LocalDateTime.now());
+                
+                noticeService.createNotice(notice);
+                
+                // 更新首次登录状态
+                user.setIsFirstLogin(0);
+                userService.updateUser(user);
+                System.out.println("已更新首次登录状态为非首次登录");
+            }
+            
             // 生成JWT token
             String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
             JwtResponse jwtResponse = new JwtResponse(token, user.getId(), user.getUsername(), 

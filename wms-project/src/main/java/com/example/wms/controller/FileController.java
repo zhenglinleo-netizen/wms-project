@@ -22,7 +22,7 @@ import java.util.Map;
 @RequestMapping("/file")
 public class FileController {
 
-    @Autowired
+    @Autowired(required = false)
     private MinioService minioService;
     
     @Autowired
@@ -37,8 +37,11 @@ public class FileController {
             if (file.isEmpty()) {
                 return Result.error("文件不能为空");
             }
+            
+            if (minioService == null) {
+                return Result.error("文件存储服务未启用");
+            }
 
-            // 上传文件到MinIO
             String fileUrl = minioService.uploadFile(file);
 
             return Result.success("上传成功", fileUrl);
@@ -56,11 +59,14 @@ public class FileController {
             if (files == null || files.length == 0) {
                 return Result.error("文件不能为空");
             }
+            
+            if (minioService == null) {
+                return Result.error("文件存储服务未启用");
+            }
 
             List<String> fileUrls = new ArrayList<>();
             for (MultipartFile file : files) {
                 if (!file.isEmpty()) {
-                    // 上传文件到MinIO
                     String fileUrl = minioService.uploadFile(file);
                     fileUrls.add(fileUrl);
                 }
@@ -81,8 +87,11 @@ public class FileController {
             if (filename == null || filename.isEmpty()) {
                 return Result.error("文件路径不能为空");
             }
+            
+            if (minioService == null) {
+                return Result.error("文件存储服务未启用");
+            }
 
-            // 从MinIO删除文件
             minioService.deleteFile(filename);
 
             return Result.success("删除成功", null);
@@ -100,14 +109,15 @@ public class FileController {
             if (file.isEmpty()) {
                 return Result.error("文件不能为空");
             }
+            
+            if (minioService == null) {
+                return Result.error("文件存储服务未启用");
+            }
 
-            // 计算文件哈希值
             String fileHash = minioService.calculateFileHash(file);
             
-            // 检查是否已存在相同哈希值的辅料
             boolean exists = productService.getProductByFileHash(fileHash) != null;
 
-            // 构建返回结果
             Map<String, Object> result = new HashMap<>();
             result.put("exists", exists);
             result.put("fileHash", fileHash);
@@ -124,13 +134,14 @@ public class FileController {
     @GetMapping("/get-image")
     public ResponseEntity<byte[]> getImage(@RequestParam("filename") String filename) {
         try {
-            // 从MinIO获取文件
+            if (minioService == null) {
+                return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+            }
+            
             byte[] fileBytes = minioService.getFile(filename);
-            // 设置响应头
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.IMAGE_JPEG);
             headers.setContentLength(fileBytes.length);
-            // 返回响应
             return new ResponseEntity<>(fileBytes, headers, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();

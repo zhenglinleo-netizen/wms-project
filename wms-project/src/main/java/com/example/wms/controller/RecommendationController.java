@@ -3,6 +3,7 @@ package com.example.wms.controller;
 import com.example.wms.common.Result;
 import com.example.wms.entity.Product;
 import com.example.wms.service.MilvusService;
+import com.example.wms.service.MinioService;
 import com.example.wms.service.MultimodalEmbeddingService;
 import com.example.wms.service.ProductService;
 import com.example.wms.service.UserBehaviorService;
@@ -12,6 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.*;
 
 @Slf4j
@@ -30,6 +37,9 @@ public class RecommendationController {
 
     @Autowired
     private UserBehaviorService userBehaviorService;
+
+    @Autowired(required = false)
+    private MinioService minioService;
 
     private static final String COLLECTION_NAME = "materials";
     private static final int VECTOR_DIMENSION = 2048; // 千问多模态向量维度
@@ -121,14 +131,14 @@ public class RecommendationController {
      * 以图搜图 - 搜索相似辅料（支持参数配置）
      * @param file 上传的图片文件
      * @param limit 返回结果数量限制，默认 10
-     * @param threshold 相似度阈值，默认 0.6（60%）
+     * @param threshold 相似度阈值，默认 0.0（内积度量）
      * @return 相似辅料列表
      */
     @PostMapping("/search-by-image")
     public Result<List<Product>> searchByImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "limit", defaultValue = "10") Integer limit,
-            @RequestParam(value = "threshold", defaultValue = "0.6") Double threshold) {
+            @RequestParam(value = "threshold", defaultValue = "0.0") Double threshold) {
         try {
             if (file == null || file.isEmpty()) {
                 return Result.error("文件不能为空");
@@ -140,16 +150,37 @@ public class RecommendationController {
             List<Float> imageVector = multimodalEmbeddingService.embedImage(file);
             log.info("Image vectorization successful, dimension: {}", imageVector.size());
 
-            // 2. 在 Milvus 中搜索相似向量
+            // 2. 检查 Milvus 集合是否有数据
+            if (!milvusService.collectionExists(COLLECTION_NAME)) {
+                log.warn("Milvus collection {} does not exist", COLLECTION_NAME);
+                return Result.error("Milvus 向量数据库未初始化，请先调用 /product/init-milvus 接口初始化");
+            }
+            
+            // 3. 在 Milvus 中搜索相似向量
             List<List<Float>> queryVectors = Collections.singletonList(imageVector);
             List<Product> similarProducts = searchSimilarProducts(queryVectors, null, limit);
             
-            // 3. 过滤掉相似度低于阈值的结果
-            final float minSimilarity = threshold.floatValue();
-            similarProducts.removeIf(p -> p.getSimilarity() == null || p.getSimilarity() < minSimilarity);
+            log.info("Milvus search returned {} results", similarProducts.size());
             
-            log.info("Found {} similar products (after filtering with threshold {})", similarProducts.size(), threshold);
-            return Result.success(similarProducts);
+            // 4. 过滤掉相似度低于阈值的结果
+            final float minSimilarity = threshold.floatValue();
+            List<Product> filteredProducts = new ArrayList<>();
+            for (Product p : similarProducts) {
+                if (p.getSimilarity() != null && p.getSimilarity() >= minSimilarity) {
+                    filteredProducts.add(p);
+                    log.info("Product: ID={}, Name={}, Similarity={}", p.getId(), p.getProductName(), p.getSimilarity());
+                }
+            }
+            
+            log.info("Found {} similar products (after filtering with threshold {})", filteredProducts.size(), threshold);
+            
+            // 5. Fallback: 如果没有结果，返回错误提示
+            if (filteredProducts.isEmpty()) {
+                log.warn("No similar products found with threshold {}", threshold);
+                return Result.success(new ArrayList<>()); // 返回空列表而不是错误
+            }
+            
+            return Result.success(filteredProducts);
 
         } catch (Exception e) {
             log.error("Image search failed", e);
@@ -158,7 +189,7 @@ public class RecommendationController {
     }
 
     /**
-     * 初始化Milvus集合
+     * 初始化 Milvus 集合
      */
     @PostMapping("/init-milvus")
     public Result<String> initMilvusCollection() {
@@ -178,6 +209,10 @@ public class RecommendationController {
             return Result.error("Failed to initialize Milvus collection: " + e.getMessage());
         }
     }
+
+
+    
+
 
     /**
      * 搜索相似辅料

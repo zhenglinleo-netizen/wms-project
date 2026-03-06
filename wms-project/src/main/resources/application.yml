@@ -3,6 +3,10 @@ spring:
     name: wms-project
   main:
     allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/wms_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&autoReconnect=true
@@ -64,6 +68,7 @@ jwt:
   expiration: 86400000
 
 minio:
+  enabled: true
   endpoint: http://localhost:9004
   accessKey: minioadmin
   secretKey: minioadmin
@@ -78,20 +83,20 @@ milvus:
   token: 
 
 zhipu:
-  api-key: user's API key
+  api-key: b381e7b66c5e4f809c02020509e53430.sx3jxMp45RMmZpE0
   api-url: https://open.bigmodel.cn/api/paas/v4/chat/completions
   model: GLM-4.1V-Thinking-Flash
   timeout: 30000
 
 dashscope:
-  api-key: user's API key
+  api-key: sk-1ff3882cf4ba4218a9d12787fd763f40
   api-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding
   model: qwen3-vl-embedding
   timeout: 30000
   vector-dimension: 2048
 
 bailian:
-  api-key: suser's API key
+  api-key: sk-1ff3882cf4ba4218a9d12787fd763f40
   api-url: https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding
   model: qwen3-vl-embedding
   timeout: 30000

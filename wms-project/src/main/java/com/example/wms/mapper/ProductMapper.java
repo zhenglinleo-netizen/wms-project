@@ -14,6 +14,7 @@ public interface ProductMapper {
     Product selectByFileHash(String fileHash);
     int insert(Product product);
     int update(Product product);
+    int updateInventory(Product product);
     int deleteById(Long id);
 }
 

@@ -99,36 +99,5 @@ public class RequirementController {
         return requirementService.updateRequirement(requirement);
     }
     
-    /**
-     * 提交议价
-     */
-    @PostMapping("/negotiate")
-    public Result submitNegotiation(@RequestBody java.util.Map<String, Object> negotiationData) {
-        Long requirementId = Long.valueOf(negotiationData.get("requirementId").toString());
-        java.util.List<java.util.Map<String, Object>> negotiatedItems = (java.util.List<java.util.Map<String, Object>>) negotiationData.get("negotiatedItems");
-        Double totalNegotiatedAmount = Double.valueOf(negotiationData.get("totalNegotiatedAmount").toString());
-        
-        // 转换为实体类
-        java.util.List<RequirementItem> items = new java.util.ArrayList<>();
-        for (java.util.Map<String, Object> item : negotiatedItems) {
-            RequirementItem requirementItem = new RequirementItem();
-            requirementItem.setMaterialId(Long.valueOf(item.get("materialId").toString()));
-            requirementItem.setNegotiatedPrice(Double.valueOf(item.get("negotiatedPrice").toString()));
-            items.add(requirementItem);
-        }
-        
-        return requirementService.submitNegotiation(requirementId, items, totalNegotiatedAmount);
-    }
-    
-    /**
-     * 审核议价
-     */
-    @PostMapping("/negotiate/audit")
-    public Result auditNegotiation(@RequestBody java.util.Map<String, Object> auditData) {
-        Long auditId = Long.valueOf(auditData.get("auditId").toString());
-        String status = auditData.get("status").toString();
-        String rejectionReason = auditData.get("rejectionReason") != null ? auditData.get("rejectionReason").toString() : null;
-        
-        return requirementService.auditNegotiation(auditId, status, rejectionReason);
-    }
+
 }

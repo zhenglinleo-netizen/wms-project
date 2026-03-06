@@ -61,6 +61,12 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
         input.put("contents", contents);
         requestBody.put("input", input);
 
+        // 添加可选参数，指定向量维度（与Milvus集合维度保持一致）
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("dimension", 2048);
+        parameters.put("output_type", "dense");
+        requestBody.put("parameters", parameters);
+
         log.info("发送文本向量化请求，文本长度: {}", text.length());
         String response = sendHttpRequest(requestBody);
         return parseVectorResponse(response);
@@ -89,6 +95,12 @@ public class MultimodalEmbeddingServiceImpl implements MultimodalEmbeddingServic
 
         input.put("contents", contents);
         requestBody.put("input", input);
+
+        // 添加可选参数，指定向量维度（与Milvus集合维度保持一致）
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("dimension", 2048);
+        parameters.put("output_type", "dense");
+        requestBody.put("parameters", parameters);
 
         String response = sendHttpRequest(requestBody);
         return parseVectorResponse(response);

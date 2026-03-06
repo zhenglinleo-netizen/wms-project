@@ -21,7 +21,7 @@ public class NoticeConsumer {
     @Autowired
     private NoticeService noticeService;
     
-    @Autowired
+    @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
     
     private static final String UNREAD_COUNT_KEY_PREFIX = "notice:unread:";
@@ -32,10 +32,15 @@ public class NoticeConsumer {
         try {
             logger.info("收到通知消息: userId={}, title={}", notice.getUserId(), notice.getTitle());
             
-            String cacheKey = UNREAD_COUNT_KEY_PREFIX + notice.getUserId();
+            // 保存通知到数据库
+            noticeService.createNotice(notice);
             
-            redisTemplate.opsForValue().increment(cacheKey);
-            redisTemplate.expire(cacheKey, CACHE_EXPIRE_TIME, TimeUnit.MINUTES);
+            if (redisTemplate != null) {
+                String cacheKey = UNREAD_COUNT_KEY_PREFIX + notice.getUserId();
+                
+                redisTemplate.opsForValue().increment(cacheKey);
+                redisTemplate.expire(cacheKey, CACHE_EXPIRE_TIME, TimeUnit.MINUTES);
+            }
             
             channel.basicAck(deliveryTag, false);
             

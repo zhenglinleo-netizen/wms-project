@@ -22,6 +22,7 @@
         <result column="images" property="images"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
+        <result column="stock" property="stock"/>
     </resultMap>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -44,10 +45,12 @@
           m.image_url,
           m.images,
           m.create_time,
-          m.update_time
+          m.update_time,
+          COALESCE(i.quantity, 0) AS stock
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         LEFT JOIN material_type mt ON m.type_id = mt.id
+        LEFT JOIN inventory i ON m.id = i.material_id
         WHERE m.id = #{id}
     </select>
 
@@ -71,10 +74,12 @@
           m.image_url,
           m.images,
           m.create_time,
-          m.update_time
+          m.update_time,
+          COALESCE(i.quantity, 0) AS stock
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         LEFT JOIN material_type mt ON m.type_id = mt.id
+        LEFT JOIN inventory i ON m.id = i.material_id
         WHERE m.material_code = #{productCode}
     </select>
 
@@ -98,10 +103,12 @@
           m.image_url,
           m.images,
           m.create_time,
-          m.update_time
+          m.update_time,
+          COALESCE(i.quantity, 0) AS stock
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         LEFT JOIN material_type mt ON m.type_id = mt.id
+        LEFT JOIN inventory i ON m.id = i.material_id
         WHERE m.status != -1
         ORDER BY m.create_time DESC
     </select>
@@ -126,10 +133,12 @@
           m.image_url,
           m.images,
           m.create_time,
-          m.update_time
+          m.update_time,
+          COALESCE(i.quantity, 0) AS stock
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         LEFT JOIN material_type mt ON m.type_id = mt.id
+        LEFT JOIN inventory i ON m.id = i.material_id
         <where>
             m.status != -1
             <if test="productCode != null and productCode != ''">
@@ -193,6 +202,15 @@
         </set>
         WHERE id = #{id}
     </update>
+    
+    <update id="updateInventory">
+        <!-- 更新或插入库存记录 -->
+        INSERT INTO inventory (warehouse_id, material_id, quantity, update_time)
+        VALUES (1, #{id}, #{stock}, NOW())
+        ON DUPLICATE KEY UPDATE
+        quantity = #{stock},
+        update_time = NOW()
+    </update>
 
     <delete id="deleteById">
         DELETE FROM material WHERE id = #{id}
@@ -218,10 +236,12 @@
           m.image_url,
           m.images,
           m.create_time,
-          m.update_time
+          m.update_time,
+          COALESCE(i.quantity, 0) AS stock
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         LEFT JOIN material_type mt ON m.type_id = mt.id
+        LEFT JOIN inventory i ON m.id = i.material_id
         WHERE m.file_hash = #{fileHash}
     </select>
 
@@ -245,10 +265,12 @@
           m.image_url,
           m.images,
           m.create_time,
-          m.update_time
+          m.update_time,
+          COALESCE(i.quantity, 0) AS stock
         FROM material m
         LEFT JOIN material_category mc ON m.category_id = mc.id
         LEFT JOIN material_type mt ON m.type_id = mt.id
+        LEFT JOIN inventory i ON m.id = i.material_id
         WHERE m.status = -1
         ORDER BY m.update_time DESC
     </select>

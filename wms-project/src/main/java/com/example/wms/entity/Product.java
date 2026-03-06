@@ -30,6 +30,7 @@ public class Product {
     private Float similarity;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    private BigDecimal stock;
 }
 
 

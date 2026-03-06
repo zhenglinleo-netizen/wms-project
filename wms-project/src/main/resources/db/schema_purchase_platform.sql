@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS `requirement` (
   `expected_delivery_date` DATE DEFAULT NULL COMMENT '预期货期',
   `deadline` DATE DEFAULT NULL COMMENT '截止日期',
   `priority` VARCHAR(20) DEFAULT 'normal' COMMENT '优先级：low-低，normal-普通，high-高，urgent-紧急',
-  `status` VARCHAR(20) DEFAULT 'draft' COMMENT '状态：draft-草稿，pending-待审核，confirming-待确定，negotiating-待议价，negotiating_pending-议价待审核，approved-已通过，rejected-已拒绝，cancelled-已取消',
+  `status` VARCHAR(20) DEFAULT 'pending' COMMENT '状态：pending-待审核，confirming-待确定，approved-已通过，rejected-已拒绝，cancelled-已取消',
   `total_payment` DECIMAL(10,2) DEFAULT 0.00 COMMENT '货款总额',
   `confirmed_time` DATETIME DEFAULT NULL COMMENT '确认时间',
   `confirmed_by` BIGINT DEFAULT NULL COMMENT '确认人ID',
@@ -183,26 +183,7 @@ CREATE TABLE IF NOT EXISTS `requirement_item` (
   KEY `idx_requirement_id` (`requirement_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='需求明细表';
 
--- 添加议价单价字段
-ALTER TABLE `requirement_item` ADD COLUMN IF NOT EXISTS `negotiated_price` DECIMAL(10,2) DEFAULT 0.00 COMMENT '议价单价';
 
--- 创建议价审核记录表
-CREATE TABLE IF NOT EXISTS `negotiation_audit` (
-  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `requirement_id` BIGINT NOT NULL COMMENT '关联的需求单ID',
-  `negotiation_data` JSON NOT NULL COMMENT '议价数据，包含所有明细的议价信息',
-  `negotiated_total` DECIMAL(15, 2) NOT NULL COMMENT '议价总额',
-  `submitted_by` BIGINT NOT NULL COMMENT '提交人ID',
-  `submitted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
-  `audited_by` BIGINT DEFAULT NULL COMMENT '审核人ID',
-  `audited_at` DATETIME DEFAULT NULL COMMENT '审核时间',
-  `status` VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT '审核状态：pending(待审核), approved(已通过), rejected(已拒绝)',
-  `rejection_reason` TEXT COMMENT '驳回原因',
-  PRIMARY KEY (`id`),
-  INDEX `idx_requirement_id` (`requirement_id`),
-  INDEX `idx_status` (`status`),
-  FOREIGN KEY (`requirement_id`) REFERENCES `requirement` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='议价审核记录表';
 
 -- 采购订单表
 CREATE TABLE IF NOT EXISTS `purchase_order` (
